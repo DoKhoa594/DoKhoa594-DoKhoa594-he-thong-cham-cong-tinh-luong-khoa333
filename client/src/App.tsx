@@ -9,7 +9,7 @@ import Profile from "./page/Profile";
 // admin (controller)
 import Dashboard from "./controller/Dashboard";
 import Employees from "./controller/Employees";
-import EmployeesSearch from "./controller/EmployeesSearch";
+import EmployeesSearch from "./controller/EmployeesList";
 import Salary from "./controller/Salary";
 
 function App() {
@@ -22,7 +22,7 @@ function App() {
         {/* ADMIN */}
         <Route path="/admin" element={<Dashboard />} />
         <Route path="/admin/employees/add" element={<Employees />} />
-        <Route path="/admin/employees/search" element={<EmployeesSearch />} />
+        <Route path="/admin/employees/list" element={<EmployeesSearch />} />
         <Route path="/admin/salary" element={<Salary />} />
 
         {/* USER */}

@@ -82,10 +82,10 @@ export default function Dashboard() {
                 </button>
 
                 <button
-                  onClick={() => navigate("/admin/employees/search")}
+                  onClick={() => navigate("/admin/employees/list")}
                   className="text-left p-2 bg-blue-600 rounded text-sm hover:bg-blue-500"
                 >
-                  🔍 Tìm kiếm nhân viên
+                  📋 Danh sách nhân viên
                 </button>
               </div>
             )}
