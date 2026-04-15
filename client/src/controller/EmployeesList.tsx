@@ -11,12 +11,7 @@ type Employee = {
   position: string;
   department: string;
   email: string;
-  idCard: string;
-  password: string;
   phone: string;
-  birthPlace: string;
-  ethnicity: string;
-  nationality: string;
 };
 
 export default function EmployeesList() {
@@ -25,27 +20,22 @@ export default function EmployeesList() {
 
   const user = JSON.parse(localStorage.getItem("user") || "{}");
 
-  // ✅ EMPTY DATA (ready API)
   const [employees, setEmployees] = useState<Employee[]>([]);
-  const [loading, setLoading] = useState(false);
-
   const [keyword, setKeyword] = useState("");
   const [selected, setSelected] = useState<Employee | null>(null);
+  const [loading, setLoading] = useState(false);
 
-  // =========================
-  // 🔥 CALL API HERE LATER
-  // =========================
+  // ✅ LOAD DATA TỪ BACKEND
   useEffect(() => {
     const fetchEmployees = async () => {
       try {
         setLoading(true);
 
-        // 👉 đổi URL này theo backend của bạn
-        const res = await axios.get("http://localhost:8080/api/employees");
+        const res = await axios.get("http://localhost:5000/api/employees");
 
         setEmployees(res.data || []);
-      } catch (error) {
-        console.error("Load employees error:", error);
+      } catch (err) {
+        console.error("Load employees error:", err);
       } finally {
         setLoading(false);
       }
@@ -54,15 +44,13 @@ export default function EmployeesList() {
     fetchEmployees();
   }, []);
 
-  const k = keyword.toLowerCase().trim();
-
+  // SEARCH
   const filtered = useMemo(() => {
-    if (!k) return employees;
-
+    const k = keyword.toLowerCase();
     return employees.filter((e) =>
-      `${e.name} ${e.code} ${e.phone} ${e.email}`.toLowerCase().includes(k),
+      `${e.name} ${e.code} ${e.phone}`.toLowerCase().includes(k),
     );
-  }, [k, employees]);
+  }, [keyword, employees]);
 
   return (
     <div className="flex h-screen bg-gray-100">
@@ -104,14 +92,14 @@ export default function EmployeesList() {
               <div className="ml-4 mt-2 flex flex-col gap-2">
                 <button
                   onClick={() => navigate("/admin/employees/add")}
-                  className="p-2 bg-blue-600 rounded text-sm"
+                  className="p-2 bg-blue-600 rounded text-sm text-left"
                 >
                   ➕ Thêm nhân viên
                 </button>
 
                 <button
                   onClick={() => navigate("/admin/employees/list")}
-                  className="p-2 bg-blue-600 rounded text-sm"
+                  className="p-2 bg-blue-600 rounded text-sm text-left"
                 >
                   📋 Danh sách nhân viên
                 </button>
@@ -128,68 +116,69 @@ export default function EmployeesList() {
       </div>
 
       {/* CONTENT */}
-      <div className="flex-1 p-6 overflow-hidden">
-        <h1 className="text-3xl font-bold mb-6">📋 Danh sách nhân viên</h1>
+      <div className="flex-1 p-6 overflow-hidden min-h-0">
+        <h1 className="text-3xl font-bold mb-6">
+          📋 Danh sách nhân viên {loading && "⏳"}
+        </h1>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 h-[85vh]">
-          {/* LEFT LIST */}
-          <div className="bg-white rounded-xl shadow p-4 overflow-y-auto">
-            <h2 className="font-bold mb-3">Employees {loading && "⏳"}</h2>
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 h-full min-h-0">
+          {/* LEFT */}
+          <div className="bg-white rounded-xl shadow p-4 h-full flex flex-col min-h-0">
+            <h2 className="font-bold mb-3">Employees</h2>
 
-            {filtered.length === 0 && !loading && (
-              <p className="text-gray-400 text-sm">Không có dữ liệu</p>
-            )}
+            <input
+              value={keyword}
+              onChange={(e) => setKeyword(e.target.value)}
+              placeholder="Tìm nhân viên..."
+              className="w-full p-3 border rounded-lg mb-3"
+            />
 
-            {filtered.map((e, i) => (
-              <div
-                key={i}
-                onClick={() => setSelected(e)}
-                className={`p-3 rounded-lg mb-2 cursor-pointer border hover:bg-blue-50 ${
-                  selected?.code === e.code ? "bg-blue-100 border-blue-400" : ""
-                }`}
-              >
-                <p className="font-semibold">{e.name}</p>
-                <p className="text-xs text-gray-500">
-                  {e.code} • {e.department}
-                </p>
-                <p className="text-xs text-gray-400">{e.phone}</p>
-              </div>
-            ))}
+            <div className="flex-1 overflow-y-auto pr-2 border rounded">
+              {filtered.map((e) => (
+                <div
+                  key={e.code}
+                  onClick={() => setSelected(e)}
+                  className={`p-3 rounded-lg mb-2 cursor-pointer border hover:bg-blue-50 ${
+                    selected?.code === e.code
+                      ? "bg-blue-100 border-blue-400"
+                      : ""
+                  }`}
+                >
+                  <p className="font-semibold">{e.name}</p>
+                  <p className="text-xs text-gray-500">
+                    {e.code} • {e.department}
+                  </p>
+                  <p className="text-xs text-gray-400">{e.phone}</p>
+                </div>
+              ))}
+            </div>
           </div>
 
-          {/* RIGHT SIDE */}
-          <div className="lg:col-span-2 flex flex-col gap-4">
-            {/* SEARCH */}
-            <div className="bg-white p-4 rounded-xl shadow">
-              <input
-                value={keyword}
-                onChange={(e) => setKeyword(e.target.value)}
-                placeholder="Tìm theo tên, mã NV, SĐT, email..."
-                className="w-full p-3 border rounded-lg"
-              />
-            </div>
-
-            {/* DETAIL */}
+          {/* RIGHT */}
+          <div className="lg:col-span-2 flex flex-col min-h-0">
             <div className="bg-white p-6 rounded-xl shadow flex-1 overflow-y-auto">
               {selected ? (
-                <div className="grid grid-cols-2 gap-3 text-sm">
-                  <Info label="Họ Và Tên" value={selected.name} />
-                  <Info label="Mã Nhân Viên" value={selected.code} />
-                  <Info label="Ngày Sinh" value={selected.dob} />
-                  <Info label="Tuổi" value={selected.age} />
-                  <Info label="Giới Tính" value={selected.gender} />
-                  <Info label="Chức Vụ" value={selected.position} />
-                  <Info label="Phòng Ban" value={selected.department} />
-                  <Info label="Email" value={selected.email} />
-                  <Info label="Số Điện Thoại" value={selected.phone} />
-                  <Info label="Số CMND/CCCD" value={selected.idCard} />
-                  <Info label="Nơi Sinh" value={selected.birthPlace} />
-                  <Info label="Dân Tộc" value={selected.ethnicity} />
-                  <Info label="Quốc Tịch" value={selected.nationality} />
-                  <Info label="Mật Khẩu" value={selected.password} />
-                </div>
+                <>
+                  <h2 className="text-xl font-bold mb-4">
+                    👤 Chi tiết nhân viên
+                  </h2>
+
+                  <div className="grid grid-cols-2 gap-3 text-sm">
+                    <Info label="Họ tên" value={selected.name} />
+                    <Info label="Mã NV" value={selected.code} />
+                    <Info label="Ngày sinh" value={selected.dob} />
+                    <Info label="Tuổi" value={selected.age} />
+                    <Info label="Giới tính" value={selected.gender} />
+                    <Info label="Chức vụ" value={selected.position} />
+                    <Info label="Phòng ban" value={selected.department} />
+                    <Info label="Email" value={selected.email} />
+                    <Info label="SĐT" value={selected.phone} />
+                  </div>
+                </>
               ) : (
-                <p className="text-gray-400">Chọn nhân viên để xem chi tiết</p>
+                <p className="text-gray-400">
+                  👉 Chọn nhân viên để xem chi tiết
+                </p>
               )}
             </div>
           </div>
@@ -199,12 +188,9 @@ export default function EmployeesList() {
   );
 }
 
-// =========================
-// INFO COMPONENT
-// =========================
 function Info({ label, value }: { label: string; value: any }) {
   return (
-    <div className="p-4 bg-gray-50 rounded-xl border hover:shadow-sm transition">
+    <div className="p-4 bg-gray-50 rounded-xl border">
       <p className="text-xs text-gray-500 mb-1">{label}</p>
       <p className="font-semibold text-gray-800">{value}</p>
     </div>
