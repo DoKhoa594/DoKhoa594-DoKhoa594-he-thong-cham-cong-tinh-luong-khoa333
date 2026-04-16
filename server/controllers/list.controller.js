@@ -7,22 +7,24 @@ exports.getEmployees = (req, res) => {
   console.log("GET /employees | keyword:", keyword);
 
   let sql = `
-    SELECT 
-      id,
-      name,
-      code,
-      DATE_FORMAT(dob, '%Y-%m-%d') AS dob,
-      TIMESTAMPDIFF(YEAR, dob, CURDATE()) AS age,
-      gender,
-      position,
-      department,
-      email,
-      phone,
-      birthPlace,
-      ethnicity,
-      nationality
-    FROM employees
-  `;
+  SELECT 
+    e.id,
+    e.name,
+    e.code,
+    DATE_FORMAT(e.dob, '%Y-%m-%d') AS dob,
+    TIMESTAMPDIFF(YEAR, e.dob, CURDATE()) AS age,
+    e.gender,
+    p.name AS position,        -- ✅ lấy tên
+    d.name AS department,      -- ✅ lấy tên
+    e.email,
+    e.phone,
+    e.birthPlace,
+    e.ethnicity,
+    e.nationality
+  FROM employees e
+  LEFT JOIN positions p ON e.position_id = p.id
+  LEFT JOIN departments d ON e.department_id = d.id
+`;
 
   let params = [];
 
@@ -56,24 +58,26 @@ exports.getEmployeeByCode = (req, res) => {
   console.log("GET /employees/" + code);
 
   const sql = `
-    SELECT 
-      id,
-      name,
-      code,
-      DATE_FORMAT(dob, '%Y-%m-%d') AS dob,
-      TIMESTAMPDIFF(YEAR, dob, CURDATE()) AS age,
-      gender,
-      position,
-      department,
-      email,
-      phone,
-      idCard,
-      birthPlace,
-      ethnicity,
-      nationality
-    FROM employees
-    WHERE code = ?
-  `;
+  SELECT 
+    e.id,
+    e.name,
+    e.code,
+    DATE_FORMAT(e.dob, '%Y-%m-%d') AS dob,
+    TIMESTAMPDIFF(YEAR, e.dob, CURDATE()) AS age,
+    e.gender,
+    p.name AS position,        -- ✅ lấy tên
+    d.name AS department,      -- ✅ lấy tên
+    e.email,
+    e.phone,
+    e.idCard,
+    e.birthPlace,
+    e.ethnicity,
+    e.nationality
+  FROM employees e
+  LEFT JOIN positions p ON e.position_id = p.id
+  LEFT JOIN departments d ON e.department_id = d.id
+  WHERE e.code = ?
+`;
 
   db.query(sql, [code], (err, results) => {
     if (err) {

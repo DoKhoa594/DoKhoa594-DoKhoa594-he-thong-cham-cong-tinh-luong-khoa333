@@ -5,14 +5,48 @@ exports.createEmployee = async (req, res) => {
   const data = req.body;
 
   try {
-    // 🔐 hash password
     const hashedPassword = await bcrypt.hash(data.password, 10);
 
+    // 🔥 1. LẤY position_id
+    function getPositionId() {
+      return new Promise((resolve, reject) => {
+        connection.query(
+          "SELECT id FROM positions WHERE name = ?",
+          [data.position],
+          (err, results) => {
+            if (err) return reject(err);
+            if (results.length === 0) return reject("Không tìm thấy chức vụ");
+            resolve(results[0].id);
+          },
+        );
+      });
+    }
+
+    // 🔥 2. LẤY department_id
+    const getDepartmentId = () => {
+      return new Promise((resolve, reject) => {
+        connection.query(
+          "SELECT id FROM departments WHERE name = ?",
+          [data.department],
+          (err, results) => {
+            if (err) return reject(err);
+            if (results.length === 0) return reject("Không tìm thấy phòng ban");
+            resolve(results[0].id);
+          },
+        );
+      });
+    };
+
+    // 🔥 lấy id
+    const position_id = await getPositionId();
+    const department_id = await getDepartmentId();
+
+    // 🔥 3. INSERT
     const sql = `
-  INSERT INTO employees 
-  (name, code, dob, age, gender, position, department, email, idCard, password, phone, birthPlace, ethnicity, nationality)
-  VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-`;
+      INSERT INTO employees 
+      (name, code, dob, age, gender, position_id, department_id, email, idCard, password, phone, birthPlace, ethnicity, nationality)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `;
 
     const values = [
       data.name,
@@ -20,8 +54,8 @@ exports.createEmployee = async (req, res) => {
       data.dob,
       data.age,
       data.gender,
-      data.position,
-      data.department,
+      position_id,
+      department_id,
       data.email,
       data.idCard,
       hashedPassword,
@@ -42,7 +76,9 @@ exports.createEmployee = async (req, res) => {
       });
     });
   } catch (error) {
-    console.error(error);
-    return res.status(500).json({ message: "Lỗi hash password" });
+    console.error("❌ ERROR:", error);
+    return res.status(500).json({
+      message: typeof error === "string" ? error : "Lỗi xử lý dữ liệu",
+    });
   }
 };

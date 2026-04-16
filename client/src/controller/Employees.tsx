@@ -2,14 +2,38 @@ import { useNavigate } from "react-router-dom";
 import { useState } from "react";
 import axios from "axios";
 
+type FormType = {
+  name: string;
+  code: string;
+  dob: string;
+  gender: string;
+  position: string;
+  department: string;
+  idCard: string;
+  password: string;
+  phone: string;
+  birthPlace: string;
+  ethnicity: string;
+  nationality: string;
+  email: string;
+};
+
 export default function AddEmployee() {
   const navigate = useNavigate();
   const [openEmployeeMenu, setOpenEmployeeMenu] = useState(false);
   const [loading, setLoading] = useState(false);
 
-  const user = JSON.parse(localStorage.getItem("user") || "{}");
+  const user = JSON.parse(localStorage.getItem("user") ?? "{}");
 
-  const [form, setForm] = useState({
+  const positions = [
+    "Giám đốc",
+    "Phó giám đốc",
+    "Trưởng phòng",
+    "Nhân viên",
+    "Thực tập sinh",
+  ];
+
+  const [form, setForm] = useState<FormType>({
     name: "",
     code: "",
     dob: "",
@@ -25,14 +49,12 @@ export default function AddEmployee() {
     email: "",
   });
 
-  // ✅ handle change
   const handleChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>,
   ) => {
     setForm({ ...form, [e.target.name]: e.target.value });
   };
 
-  // ✅ tính tuổi
   const calculateAge = (dob: string) => {
     if (!dob) return "";
     const birth = new Date(dob);
@@ -41,22 +63,20 @@ export default function AddEmployee() {
     return Math.abs(ageDate.getUTCFullYear() - 1970);
   };
 
-  // ✅ VALIDATE (fix an toàn)
   const validate = () => {
     if (!form.name.trim()) return "Vui lòng nhập tên";
     if (!form.code.trim()) return "Vui lòng nhập mã nhân viên";
     if (!form.password.trim()) return "Vui lòng nhập mật khẩu";
+    if (!form.position) return "Vui lòng chọn chức vụ";
 
-    if (!form.phone || !form.phone.match(/^[0-9]{9,11}$/))
-      return "Số điện thoại không hợp lệ";
+    if (!/^[0-9]{9,11}$/.test(form.phone)) return "Số điện thoại không hợp lệ";
 
-    if (!form.email || !form.email.match(/^[^\s@]+@[^\s@]+\.[^\s@]+$/))
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email))
       return "Email không hợp lệ";
 
     return null;
   };
 
-  // ✅ HANDLE SAVE
   const handleSave = async () => {
     const error = validate();
     if (error) {
@@ -72,8 +92,6 @@ export default function AddEmployee() {
     try {
       setLoading(true);
 
-      console.log("DATA SEND:", newEmployee); // 🔥 debug
-
       const res = await axios.post(
         "http://localhost:5000/api/employees",
         newEmployee,
@@ -81,7 +99,6 @@ export default function AddEmployee() {
 
       alert(res.data.message || "Thêm nhân viên thành công!");
 
-      // ✅ reset form
       setForm({
         name: "",
         code: "",
@@ -97,14 +114,9 @@ export default function AddEmployee() {
         nationality: "",
         email: "",
       });
-
-      // 👉 nếu muốn quay lại dashboard
-      // navigate("/admin");
-    } catch (err: any) {
-      console.error("ERROR:", err);
-
-      // 👉 show lỗi backend nếu có
-      alert(err?.response?.data?.message || "Lỗi khi thêm nhân viên!");
+    } catch (err) {
+      const error = err as any;
+      alert(error?.response?.data?.message || "Lỗi khi thêm nhân viên!");
     } finally {
       setLoading(false);
     }
@@ -176,7 +188,6 @@ export default function AddEmployee() {
 
       {/* CONTENT */}
       <div className="flex-1 p-6 overflow-y-auto">
-        {/* HEADER */}
         <div className="flex justify-between items-center mb-6">
           <h1 className="text-2xl font-bold">➕ Thêm nhân viên</h1>
 
@@ -188,43 +199,43 @@ export default function AddEmployee() {
           </button>
         </div>
 
-        {/* FORM */}
         <div className="bg-white p-6 rounded-xl shadow-md grid grid-cols-2 gap-4">
           <h2 className="col-span-2 font-bold text-lg">Thông tin cơ bản</h2>
 
           <input
+            type="text"
             name="name"
             value={form.name}
             onChange={handleChange}
             placeholder="Họ và tên"
             className="border p-2 rounded"
           />
-
           <input
+            type="text"
             name="code"
             value={form.code}
             onChange={handleChange}
             placeholder="Mã NV"
             className="border p-2 rounded"
           />
-
           <input
+            type="text"
             name="idCard"
             value={form.idCard}
             onChange={handleChange}
             placeholder="CMND / CCCD"
             className="border p-2 rounded"
           />
-
           <input
+            type="text"
             name="phone"
             value={form.phone}
             onChange={handleChange}
             placeholder="Số điện thoại"
             className="border p-2 rounded"
           />
-
           <input
+            type="email"
             name="email"
             value={form.email}
             onChange={handleChange}
@@ -257,6 +268,7 @@ export default function AddEmployee() {
           <h2 className="col-span-2 font-bold text-lg">Thông tin công việc</h2>
 
           <input
+            type="text"
             name="department"
             value={form.department}
             onChange={handleChange}
@@ -264,44 +276,50 @@ export default function AddEmployee() {
             className="border p-2 rounded"
           />
 
-          <input
+          <select
             name="position"
             value={form.position}
             onChange={handleChange}
-            placeholder="Chức vụ"
             className="border p-2 rounded"
-          />
+          >
+            <option value="">-- Chọn chức vụ --</option>
+            {positions.map((pos, i) => (
+              <option key={i} value={pos}>
+                {pos}
+              </option>
+            ))}
+          </select>
 
           <h2 className="col-span-2 font-bold text-lg">Thông tin thêm</h2>
 
           <input
+            type="text"
             name="birthPlace"
             value={form.birthPlace}
             onChange={handleChange}
             placeholder="Nơi sinh"
             className="border p-2 rounded"
           />
-
           <input
+            type="text"
             name="ethnicity"
             value={form.ethnicity}
             onChange={handleChange}
             placeholder="Dân tộc"
             className="border p-2 rounded"
           />
-
           <input
+            type="text"
             name="nationality"
             value={form.nationality}
             onChange={handleChange}
             placeholder="Quốc tịch"
             className="border p-2 rounded"
           />
-
           <input
+            type="password"
             name="password"
             value={form.password}
-            type="password"
             onChange={handleChange}
             placeholder="Mật khẩu"
             className="border p-2 rounded"
