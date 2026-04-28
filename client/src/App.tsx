@@ -1,31 +1,37 @@
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 
-// pages chung
-
 import Login from "./page/Login";
 import Attendance from "./page/Attendance";
 import Profile from "./page/Profile";
 
-// admin (controller)
 import Dashboard from "./controller/Dashboard";
 import Employees from "./controller/Employees";
 import EmployeesSearch from "./controller/EmployeesList";
+import EditEmployee from "./controller/EditEmployees";
 import Salary from "./controller/Salary";
+import AttendancePage from "./controller/Attendance";
 
 function App() {
   return (
     <BrowserRouter>
       <Routes>
-        {/* LOGIN */}
         <Route path="/" element={<Login />} />
 
-        {/* ADMIN */}
         <Route path="/admin" element={<Dashboard />} />
+
+        {/* Add employee */}
         <Route path="/admin/employees/add" element={<Employees />} />
+
+        {/* List employee */}
         <Route path="/admin/employees/list" element={<EmployeesSearch />} />
+
+        {/* Edit employee */}
+        <Route path="/admin/employees/edit/:code" element={<EditEmployee />} />
+
+        <Route path="/admin/attendance" element={<AttendancePage />} />
+
         <Route path="/admin/salary" element={<Salary />} />
 
-        {/* USER */}
         <Route path="/user" element={<Attendance />} />
         <Route path="/profile" element={<Profile />} />
       </Routes>

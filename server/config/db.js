@@ -1,9 +1,9 @@
-const mysql = require("mysql2");
+import mysql from "mysql2";
 
 const connection = mysql.createConnection({
   host: "localhost",
   user: "root",
-  password: "", // XAMPP mặc định
+  password: "",
   database: "employee_db",
 });
 
@@ -15,4 +15,4 @@ connection.connect((err) => {
   console.log("✅ Kết nối MySQL thành công!");
 });
 
-module.exports = connection;
+export default connection;

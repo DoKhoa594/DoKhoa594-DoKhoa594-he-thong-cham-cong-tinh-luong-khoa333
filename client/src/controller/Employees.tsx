@@ -33,6 +33,14 @@ export default function AddEmployee() {
     "Thực tập sinh",
   ];
 
+  const departments = [
+    "CNTT",
+    "Kinh doanh",
+    "Marketing",
+    "Tài chính - Kế toán",
+    "Sản xuất",
+  ];
+
   const [form, setForm] = useState<FormType>({
     name: "",
     code: "",
@@ -68,6 +76,7 @@ export default function AddEmployee() {
     if (!form.code.trim()) return "Vui lòng nhập mã nhân viên";
     if (!form.password.trim()) return "Vui lòng nhập mật khẩu";
     if (!form.position) return "Vui lòng chọn chức vụ";
+    if (!form.department) return "Vui lòng chọn phòng ban";
 
     if (!/^[0-9]{9,11}$/.test(form.phone)) return "Số điện thoại không hợp lệ";
 
@@ -79,10 +88,7 @@ export default function AddEmployee() {
 
   const handleSave = async () => {
     const error = validate();
-    if (error) {
-      alert(error);
-      return;
-    }
+    if (error) return alert(error);
 
     const newEmployee = {
       ...form,
@@ -93,7 +99,7 @@ export default function AddEmployee() {
       setLoading(true);
 
       const res = await axios.post(
-        "http://localhost:5000/api/employees",
+        "http://localhost:5000/api/create-employee",
         newEmployee,
       );
 
@@ -114,19 +120,18 @@ export default function AddEmployee() {
         nationality: "",
         email: "",
       });
-    } catch (err) {
-      const error = err as any;
-      alert(error?.response?.data?.message || "Lỗi khi thêm nhân viên!");
+    } catch (err: any) {
+      alert(err?.response?.data?.message || "Lỗi khi thêm nhân viên!");
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="flex h-screen bg-gray-100">
+    <div className="flex h-screen bg-gray-100 font-sans">
       {/* SIDEBAR */}
       <div className="w-64 bg-blue-700 text-white p-5 flex flex-col">
-        <h2 className="text-2xl font-bold mb-6">Admin Panel</h2>
+        <h2 className="text-2xl font-bold mb-6 tracking-wide">Admin Panel</h2>
 
         <div className="flex items-center gap-3 mb-6 p-2 rounded bg-blue-600">
           <div className="w-10 h-10 bg-white text-blue-700 flex items-center justify-center rounded-full font-bold">
@@ -183,7 +188,9 @@ export default function AddEmployee() {
           </button>
         </nav>
 
-        <button className="mt-auto bg-red-500 py-2 rounded">Đăng xuất</button>
+        <button className="mt-auto bg-red-500 hover:bg-red-600 py-2 rounded transition">
+          Đăng xuất
+        </button>
       </div>
 
       {/* CONTENT */}
@@ -193,73 +200,58 @@ export default function AddEmployee() {
 
           <button
             onClick={() => navigate("/admin")}
-            className="bg-gray-600 text-white px-4 py-2 rounded"
+            className="bg-gray-600 hover:bg-gray-700 text-white px-4 py-2 rounded transition"
           >
             ← Quay lại
           </button>
         </div>
 
-        <div className="bg-white p-6 rounded-xl shadow-md grid grid-cols-2 gap-4">
+        <div className="bg-white p-6 rounded-2xl shadow-lg grid grid-cols-2 gap-4">
           <h2 className="col-span-2 font-bold text-lg">Thông tin cơ bản</h2>
 
-          <input
-            type="text"
-            name="name"
-            value={form.name}
-            onChange={handleChange}
-            placeholder="Họ và tên"
-            className="border p-2 rounded"
-          />
-          <input
-            type="text"
-            name="code"
-            value={form.code}
-            onChange={handleChange}
-            placeholder="Mã NV"
-            className="border p-2 rounded"
-          />
-          <input
-            type="text"
-            name="idCard"
-            value={form.idCard}
-            onChange={handleChange}
-            placeholder="CMND / CCCD"
-            className="border p-2 rounded"
-          />
-          <input
-            type="text"
-            name="phone"
-            value={form.phone}
-            onChange={handleChange}
-            placeholder="Số điện thoại"
-            className="border p-2 rounded"
-          />
-          <input
-            type="email"
-            name="email"
-            value={form.email}
-            onChange={handleChange}
-            placeholder="Email"
-            className="border p-2 rounded"
-          />
+          {/* INPUT COMPONENT */}
+          {[
+            { name: "name", label: "Họ và tên" },
+            { name: "code", label: "Mã NV" },
+            { name: "idCard", label: "CMND / CCCD" },
+            { name: "phone", label: "Số điện thoại" },
+            { name: "email", label: "Email", type: "email" },
+          ].map((field) => (
+            <div key={field.name}>
+              <label className="text-sm font-medium">{field.label}</label>
+              <input
+                type={field.type || "text"}
+                name={field.name}
+                value={(form as any)[field.name]}
+                onChange={handleChange}
+                className="w-full border p-2 rounded focus:ring-2 focus:ring-blue-500 outline-none"
+              />
+            </div>
+          ))}
 
-          <input
-            type="date"
-            name="dob"
-            value={form.dob}
-            onChange={handleChange}
-            className="border p-2 rounded"
-          />
+          <div>
+            <label className="text-sm font-medium">Ngày sinh</label>
+            <input
+              type="date"
+              name="dob"
+              value={form.dob}
+              onChange={handleChange}
+              className="w-full border p-2 rounded focus:ring-2 focus:ring-blue-500"
+            />
+          </div>
 
-          <select
-            name="gender"
-            value={form.gender}
-            onChange={handleChange}
-            className="border p-2 rounded"
-          >
-            <option value="Nam">Nam</option>
-            <option value="Nữ">Nữ</option>
-          </select>
+          <div>
+            <label className="text-sm font-medium">Giới tính</label>
+            <select
+              name="gender"
+              value={form.gender}
+              onChange={handleChange}
+              className="w-full border p-2 rounded"
+            >
+              <option value="Nam">Nam</option>
+              <option value="Nữ">Nữ</option>
+            </select>
+          </div>
 
           <div className="col-span-2 p-3 bg-gray-100 rounded">
             👤 Tuổi: <b>{calculateAge(form.dob) || "--"}</b>
@@ -267,68 +259,64 @@ export default function AddEmployee() {
 
           <h2 className="col-span-2 font-bold text-lg">Thông tin công việc</h2>
 
-          <input
-            type="text"
-            name="department"
-            value={form.department}
-            onChange={handleChange}
-            placeholder="Phòng ban"
-            className="border p-2 rounded"
-          />
+          <div>
+            <label className="text-sm font-medium">Phòng ban</label>
+            <select
+              name="department"
+              value={form.department}
+              onChange={handleChange}
+              className="w-full border p-2 rounded"
+            >
+              <option value="">-- Chọn phòng ban --</option>
+              {departments.map((d, i) => (
+                <option key={i} value={d}>
+                  {d}
+                </option>
+              ))}
+            </select>
+          </div>
 
-          <select
-            name="position"
-            value={form.position}
-            onChange={handleChange}
-            className="border p-2 rounded"
-          >
-            <option value="">-- Chọn chức vụ --</option>
-            {positions.map((pos, i) => (
-              <option key={i} value={pos}>
-                {pos}
-              </option>
-            ))}
-          </select>
+          <div>
+            <label className="text-sm font-medium">Chức vụ</label>
+            <select
+              name="position"
+              value={form.position}
+              onChange={handleChange}
+              className="w-full border p-2 rounded"
+            >
+              <option value="">-- Chọn chức vụ --</option>
+              {positions.map((p, i) => (
+                <option key={i} value={p}>
+                  {p}
+                </option>
+              ))}
+            </select>
+          </div>
 
           <h2 className="col-span-2 font-bold text-lg">Thông tin thêm</h2>
 
-          <input
-            type="text"
-            name="birthPlace"
-            value={form.birthPlace}
-            onChange={handleChange}
-            placeholder="Nơi sinh"
-            className="border p-2 rounded"
-          />
-          <input
-            type="text"
-            name="ethnicity"
-            value={form.ethnicity}
-            onChange={handleChange}
-            placeholder="Dân tộc"
-            className="border p-2 rounded"
-          />
-          <input
-            type="text"
-            name="nationality"
-            value={form.nationality}
-            onChange={handleChange}
-            placeholder="Quốc tịch"
-            className="border p-2 rounded"
-          />
-          <input
-            type="password"
-            name="password"
-            value={form.password}
-            onChange={handleChange}
-            placeholder="Mật khẩu"
-            className="border p-2 rounded"
-          />
+          {[
+            { name: "birthPlace", label: "Nơi sinh" },
+            { name: "ethnicity", label: "Dân tộc" },
+            { name: "nationality", label: "Quốc tịch" },
+            { name: "password", label: "Mật khẩu", type: "password" },
+          ].map((field) => (
+            <div key={field.name}>
+              <label className="text-sm font-medium">{field.label}</label>
+              <input
+                type={field.type || "text"}
+                name={field.name}
+                value={(form as any)[field.name]}
+                onChange={handleChange}
+                className="w-full border p-2 rounded focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
+          ))}
 
           <button
             onClick={handleSave}
             disabled={loading}
-            className="col-span-2 bg-blue-600 text-white py-2 rounded disabled:bg-gray-400"
+            className="col-span-2 bg-blue-600 hover:bg-blue-700 transition text-white py-2 rounded disabled:bg-gray-400"
           >
             {loading ? "Đang lưu..." : "Lưu nhân viên"}
           </button>

@@ -1,84 +1,203 @@
-const connection = require("../config/db");
-const bcrypt = require("bcrypt");
+import connection from "../config/db.js";
+import bcrypt from "bcrypt";
 
-exports.createEmployee = async (req, res) => {
+// ================= CREATE =================
+const createEmployee = async (req, res) => {
   const data = req.body;
 
   try {
     const hashedPassword = await bcrypt.hash(data.password, 10);
 
-    // 🔥 1. LẤY position_id
     function getPositionId() {
       return new Promise((resolve, reject) => {
         connection.query(
-          "SELECT id FROM positions WHERE name = ?",
+          "SELECT id FROM positions WHERE name=?",
           [data.position],
           (err, results) => {
             if (err) return reject(err);
-            if (results.length === 0) return reject("Không tìm thấy chức vụ");
+
+            if (!results.length) {
+              return reject("Không tìm thấy chức vụ");
+            }
+
             resolve(results[0].id);
           },
         );
       });
     }
 
-    // 🔥 2. LẤY department_id
     const getDepartmentId = () => {
       return new Promise((resolve, reject) => {
         connection.query(
-          "SELECT id FROM departments WHERE name = ?",
+          "SELECT id FROM departments WHERE name=?",
           [data.department],
           (err, results) => {
             if (err) return reject(err);
-            if (results.length === 0) return reject("Không tìm thấy phòng ban");
+
+            if (!results.length) {
+              return reject("Không tìm thấy phòng ban");
+            }
+
             resolve(results[0].id);
           },
         );
       });
     };
 
-    // 🔥 lấy id
     const position_id = await getPositionId();
     const department_id = await getDepartmentId();
 
-    // 🔥 3. INSERT
     const sql = `
-      INSERT INTO employees 
-      (name, code, dob, age, gender, position_id, department_id, email, idCard, password, phone, birthPlace, ethnicity, nationality)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    `;
+ INSERT INTO employees
+ (
+  name,code,dob,age,gender,
+  position_id,
+  department_id,
+  email,idCard,password,
+  phone,birthPlace,ethnicity,nationality
+ )
+ VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+ `;
 
-    const values = [
+    connection.query(
+      sql,
+      [
+        data.name,
+        data.code,
+        data.dob,
+        data.age,
+        data.gender,
+        position_id,
+        department_id,
+        data.email,
+        data.idCard,
+        hashedPassword,
+        data.phone,
+        data.birthPlace,
+        data.ethnicity,
+        data.nationality,
+      ],
+      (err) => {
+        if (err) {
+          console.log(err);
+          return res.status(500).json({
+            message: "Lỗi server",
+          });
+        }
+
+        res.json({
+          message: "Thêm nhân viên thành công",
+        });
+      },
+    );
+  } catch (error) {
+    console.log(error);
+
+    res.status(500).json({
+      message: "Lỗi xử lý",
+    });
+  }
+};
+
+// ================= DETAIL =================
+const getEmployeeByCode = (req, res) => {
+  const { code } = req.params;
+
+  connection.query(
+    "SELECT * FROM employees WHERE code=?",
+    [code],
+    (err, result) => {
+      if (err) {
+        return res.status(500).json({
+          message: "Lỗi server",
+        });
+      }
+
+      if (!result.length) {
+        return res.status(404).json({
+          message: "Không tìm thấy nhân viên",
+        });
+      }
+
+      res.json(result[0]);
+    },
+  );
+};
+
+// ================= UPDATE =================
+const updateEmployee = (req, res) => {
+  const { code } = req.params;
+  const data = req.body;
+
+  const sql = `
+ UPDATE employees
+ SET
+ name=?,
+ dob=?,
+ gender=?,
+ birthPlace=?,
+ ethnicity=?,
+ nationality=?,
+ idCard=?,
+ phone=?,
+ email=?
+ WHERE code=?
+ `;
+
+  connection.query(
+    sql,
+    [
       data.name,
-      data.code,
       data.dob,
-      data.age,
       data.gender,
-      position_id,
-      department_id,
-      data.email,
-      data.idCard,
-      hashedPassword,
-      data.phone,
       data.birthPlace,
       data.ethnicity,
       data.nationality,
-    ];
-
-    connection.query(sql, values, (err, result) => {
+      data.idCard,
+      data.phone,
+      data.email,
+      code,
+    ],
+    (err) => {
       if (err) {
-        console.error("❌ Lỗi insert:", err);
-        return res.status(500).json({ message: "Lỗi server" });
+        return res.status(500).json({
+          message: "Update lỗi",
+        });
       }
 
-      return res.status(200).json({
-        message: "Thêm nhân viên thành công!",
+      res.json({
+        message: "Cập nhật thành công",
       });
-    });
-  } catch (error) {
-    console.error("❌ ERROR:", error);
-    return res.status(500).json({
-      message: typeof error === "string" ? error : "Lỗi xử lý dữ liệu",
-    });
-  }
+    },
+  );
+};
+
+// ================= RESET PASSWORD =================
+const resetPassword = async (req, res) => {
+  const { code } = req.params;
+
+  const newPass = await bcrypt.hash("123456", 10);
+
+  connection.query(
+    "UPDATE employees SET password=? WHERE code=?",
+    [newPass, code],
+    (err) => {
+      if (err) {
+        return res.status(500).json({
+          message: "Reset lỗi",
+        });
+      }
+
+      res.json({
+        message: "Reset thành công",
+      });
+    },
+  );
+};
+
+export default {
+  createEmployee,
+  getEmployeeByCode,
+  updateEmployee,
+  resetPassword,
 };

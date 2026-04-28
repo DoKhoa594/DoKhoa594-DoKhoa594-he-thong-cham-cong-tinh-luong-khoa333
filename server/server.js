@@ -1,15 +1,14 @@
-const express = require("express");
-const cors = require("cors");
+import express from "express";
+import cors from "cors";
+import initEmployeeRoutes from "./routers/employee.router.js";
 
 const app = express();
 
-// middleware
 app.use(cors());
 app.use(express.json());
 
-// routes
-const employeeRoute = require("./routers/employee.router");
-app.use("/api/employees", employeeRoute);
+// gọi trực tiếp
+initEmployeeRoutes(app);
 
 app.listen(5000, () => {
   console.log("Server chạy tại http://localhost:5000");
