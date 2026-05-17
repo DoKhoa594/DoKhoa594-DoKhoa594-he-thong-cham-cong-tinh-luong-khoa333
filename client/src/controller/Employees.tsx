@@ -1,6 +1,7 @@
 import { useNavigate } from "react-router-dom";
 import { useState } from "react";
 import axios from "axios";
+import toast from "react-hot-toast";
 
 type FormType = {
   name: string;
@@ -88,7 +89,7 @@ export default function AddEmployee() {
 
   const handleSave = async () => {
     const error = validate();
-    if (error) return alert(error);
+    if (error) return toast.error(error);
 
     const newEmployee = {
       ...form,
@@ -103,7 +104,7 @@ export default function AddEmployee() {
         newEmployee,
       );
 
-      alert(res.data.message || "Thêm nhân viên thành công!");
+      toast.success(res.data.message || "Thêm nhân viên thành công!");
 
       setForm({
         name: "",
@@ -121,7 +122,7 @@ export default function AddEmployee() {
         email: "",
       });
     } catch (err: any) {
-      alert(err?.response?.data?.message || "Lỗi khi thêm nhân viên!");
+      toast.error(err?.response?.data?.message || "Lỗi khi thêm nhân viên!");
     } finally {
       setLoading(false);
     }
@@ -152,7 +153,10 @@ export default function AddEmployee() {
             Tổng quan
           </button>
 
-          <button className="p-2 hover:bg-blue-600 rounded text-left">
+          <button
+            onClick={() => navigate("/admin/attendance")}
+            className="text-left p-2 hover:bg-blue-600 rounded"
+          >
             Chấm công
           </button>
 

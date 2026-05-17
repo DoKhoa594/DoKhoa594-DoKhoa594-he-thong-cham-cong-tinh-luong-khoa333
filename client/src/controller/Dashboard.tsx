@@ -132,7 +132,10 @@ export default function Dashboard() {
             Tổng quan
           </button>
 
-          <button className="text-left p-2 hover:bg-blue-600 rounded">
+          <button
+            onClick={() => navigate("/admin/attendance")}
+            className="text-left p-2 hover:bg-blue-600 rounded"
+          >
             Chấm công
           </button>
 
@@ -178,7 +181,7 @@ export default function Dashboard() {
 
       {/* CONTENT */}
       <div className="flex-1 p-6 overflow-auto">
-        <h1 className="text-3xl font-bold mb-4">Dashboard</h1>
+        <h1 className="text-3xl font-bold mb-4">Tổng quan</h1>
 
         <div className="bg-white min-h-full rounded shadow p-6">
           {/* FILTER */}

@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
+import { FiEye, FiEyeOff } from "react-icons/fi";
+import toast from "react-hot-toast";
 
 type Employee = {
   name: string;
@@ -42,6 +44,7 @@ export default function EmployeesList() {
   const [selected, setSelected] = useState<Employee | null>(null);
 
   const [loading, setLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
 
   // ================= AUTH =================
   useEffect(() => {
@@ -104,20 +107,31 @@ export default function EmployeesList() {
   const handleResetPassword = async () => {
     if (!selected) return;
 
-    const ok = window.confirm(`Reset mật khẩu cho ${selected.name}?`);
+    const ok = window.confirm(
+      `Bạn có chắc muốn reset mật khẩu của ${selected.name} về mặc định không?`,
+    );
 
     if (!ok) return;
 
     try {
-      // Sau nối backend:
-      // await axios.post(
-      // "http://localhost:5000/api/reset-password",
-      // { code:selected.code }
-      // )
+      await axios.put(
+        `http://localhost:5000/api/reset-password/${selected.code}`,
+      );
 
-      alert(`Đã reset mật khẩu cho ${selected.name}\nMật khẩu tạm: 123456`);
-    } catch {
-      alert("Reset mật khẩu thất bại");
+      // cập nhật pass mới luôn ở UI
+      setSelected({
+        ...selected,
+        password: "123456",
+      });
+
+      toast.success(
+        `Đã reset mật khẩu cho ${selected.name}\nMật khẩu mới: 123456`,
+        {
+          duration: 4000,
+        },
+      );
+    } catch (err: any) {
+      toast.error(err?.response?.data?.message || "Reset mật khẩu thất bại");
     }
   };
 
@@ -149,7 +163,10 @@ export default function EmployeesList() {
             Tổng quan
           </button>
 
-          <button className="p-2 hover:bg-blue-600 rounded text-left">
+          <button
+            onClick={() => navigate("/admin/attendance")}
+            className="text-left p-2 hover:bg-blue-600 rounded"
+          >
             Chấm công
           </button>
 
@@ -292,14 +309,34 @@ export default function EmployeesList() {
 
                     <Info label="Chức vụ" value={selected.position} />
 
-                    <Info
-                      label="Password hiện tại"
-                      value={
-                        user.role === "admin"
-                          ? selected.password
-                          : "Không có quyền"
-                      }
-                    />
+                    <div className="p-4 bg-gray-50 rounded-xl border">
+                      <p className="text-xs text-gray-500 mb-1">
+                        Password hiện tại
+                      </p>
+
+                      <div className="flex items-center justify-between">
+                        <p className="font-semibold text-gray-800 break-words">
+                          {user.role === "admin"
+                            ? showPassword
+                              ? selected.password
+                              : "••••••••"
+                            : "Không có quyền"}
+                        </p>
+
+                        {user.role === "admin" && (
+                          <button
+                            onClick={() => setShowPassword(!showPassword)}
+                            className="text-blue-600 hover:text-blue-800 transition"
+                          >
+                            {showPassword ? (
+                              <FiEyeOff size={20} />
+                            ) : (
+                              <FiEye size={20} />
+                            )}
+                          </button>
+                        )}
+                      </div>
+                    </div>
                   </div>
                 </>
               ) : (

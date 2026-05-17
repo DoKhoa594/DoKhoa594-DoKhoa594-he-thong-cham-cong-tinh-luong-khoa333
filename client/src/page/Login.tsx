@@ -13,9 +13,12 @@ export default function Login() {
     setTimeout(() => {
       // giả lập user
       const user = {
+        id: 9,
         username: username || "admin",
         role: username === "admin" ? "admin" : "user",
       };
+
+      localStorage.setItem("token", "fake-token");
 
       localStorage.setItem("user", JSON.stringify(user));
 

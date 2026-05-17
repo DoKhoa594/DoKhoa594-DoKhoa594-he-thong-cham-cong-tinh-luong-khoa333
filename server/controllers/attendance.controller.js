@@ -1,83 +1,181 @@
 import connection from "../config/db.js";
-import bcrypt from "bcrypt";
-const query = (sql, params = []) => {
-  return new Promise((resolve, reject) => {
-    connection.query(sql, params, (err, results) => {
-      if (err) reject(err);
-      else resolve(results);
-    });
-  });
+
+// =====================================
+// TIME HELPERS (VN +7)
+// =====================================
+
+const getVNDate = () => {
+  const d = new Date();
+  return new Date(d.getTime() + 7 * 60 * 60 * 1000).toISOString().split("T")[0];
 };
 
-// LIST
+const getVNTime = () => {
+  const d = new Date();
+  return new Date(d.getTime() + 7 * 60 * 60 * 1000)
+    .toTimeString()
+    .split(" ")[0];
+};
+
+// =====================================
+// GET ATTENDANCE
+// =====================================
+
 export const getAttendances = async (req, res) => {
   try {
-    const rows = await query(`
-SELECT
-a.id,
-e.name,
-e.code,
-DATE_FORMAT(a.work_date,'%Y-%m-%d') work_date,
-TIME_FORMAT(a.check_in,'%H:%i') check_in,
-TIME_FORMAT(a.check_out,'%H:%i') check_out,
-IFNULL(
-TIMESTAMPDIFF(HOUR,a.check_in,a.check_out),
-0
-) hours,
-a.status
-FROM attendance a
-JOIN employees e
-ON a.employee_id=e.id
-`);
+    const { date } = req.query;
 
-    res.json(rows);
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-};
+    console.log("DATE =", date);
+    console.log("WHERE RUNNING");
 
-// DETAIL
-export const getAttendanceById = async (req, res) => {
-  try {
-    const rows = await query("SELECT * FROM attendance WHERE id=?", [
-      req.params.id,
-    ]);
+    const sql = `
+      SELECT
+        attendance.id,
+        attendance.employee_id,
+        employees.name AS employee_name,
+        attendance.work_date,
+        attendance.check_in,
+        attendance.check_out,
+        attendance.status
+      FROM attendance
+      INNER JOIN employees
+        ON attendance.employee_id = employees.id
+      WHERE attendance.work_date = ?
+    `;
 
-    res.json(rows[0]);
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-};
+    connection.query(sql, [date], (err, results) => {
+      if (err) {
+        console.log(err);
 
-// CREATE
-export const createAttendance = async (req, res) => {
-  try {
-    res.json({
-      message: "attendance created",
+        return res.status(500).json({
+          message: "Lỗi lấy attendance",
+        });
+      }
+
+      const present = results.filter(
+        (item) => item.status === "present",
+      ).length;
+
+      const late = results.filter((item) => item.status === "late").length;
+
+      const absent = results.filter((item) => item.status === "absent").length;
+
+      res.json({
+        attendance: results,
+        summary: {
+          present,
+          late,
+          absent,
+        },
+      });
     });
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    console.log(err);
+
+    res.status(500).json({
+      message: "Server Error",
+    });
   }
 };
 
-// UPDATE
-export const updateAttendance = async (req, res) => {
+// =====================================
+// CHECK IN
+// =====================================
+
+export const checkIn = async (req, res) => {
   try {
-    res.json({
-      message: "attendance updated",
+    const { employee_id } = req.body;
+
+    const today = getVNDate();
+    const time = getVNTime();
+
+    const checkSql = `
+      SELECT *
+      FROM attendance
+      WHERE employee_id = ?
+      AND work_date = ?
+    `;
+
+    connection.query(checkSql, [employee_id, today], (err, results) => {
+      if (err) {
+        console.log(err);
+        return res.status(500).json({
+          message: "Database error",
+        });
+      }
+
+      if (results.length > 0) {
+        return res.status(400).json({
+          message: "Đã check in hôm nay",
+        });
+      }
+
+      const status = time > "08:00:00" ? "late" : "present";
+
+      const insertSql = `
+        INSERT INTO attendance
+        (employee_id, work_date, check_in, status)
+        VALUES (?, ?, ?, ?)
+      `;
+
+      connection.query(insertSql, [employee_id, today, time, status], (err) => {
+        if (err) {
+          console.log(err);
+          return res.status(500).json({
+            message: "Check in thất bại",
+          });
+        }
+
+        res.json({
+          message: "Check in thành công",
+          time,
+          date: today,
+        });
+      });
     });
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    console.log(err);
+    res.status(500).json({
+      message: "Server Error",
+    });
   }
 };
 
-// DELETE
-export const deleteAttendance = async (req, res) => {
+// =====================================
+// CHECK OUT
+// =====================================
+
+export const checkOut = async (req, res) => {
   try {
-    res.json({
-      message: "attendance deleted",
+    const { employee_id } = req.body;
+
+    const today = getVNDate();
+    const time = getVNTime();
+
+    const sql = `
+      UPDATE attendance
+      SET check_out = ?
+      WHERE employee_id = ?
+      AND work_date = ?
+    `;
+
+    connection.query(sql, [time, employee_id, today], (err) => {
+      if (err) {
+        console.log(err);
+        return res.status(500).json({
+          message: "Check out thất bại",
+        });
+      }
+
+      res.json({
+        message: "Check out thành công",
+        time,
+        date: today,
+      });
     });
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    console.log(err);
+    res.status(500).json({
+      message: "Server Error",
+    });
   }
 };

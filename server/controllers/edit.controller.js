@@ -1,7 +1,8 @@
 import db from "../config/db.js";
+import bcrypt from "bcrypt";
 
 // =========================
-// GET DETAIL
+// GET DETAIL (TRẢ ID CHO FRONTEND)
 // =========================
 const getEmployeeByCode = async (req, res) => {
   try {
@@ -17,73 +18,92 @@ const getEmployeeByCode = async (req, res) => {
       });
     }
 
-    return res.json(employee);
+    return res.json({
+      name: employee.name,
+      code: employee.code,
+
+      dob: employee.dob,
+      gender: employee.gender,
+
+      birthPlace: employee.birthPlace,
+      ethnicity: employee.ethnicity,
+      nationality: employee.nationality,
+
+      idCard: employee.idCard,
+      phone: employee.phone,
+      email: employee.email,
+
+      // 🔥 QUAN TRỌNG: TRẢ ID
+      department_id: employee.department_id,
+      position_id: employee.position_id,
+    });
   } catch (error) {
     console.log(error);
-
     return res.status(500).json({
       message: "Lỗi server",
     });
   }
 };
+//UPDATE
 
-// =========================
-// UPDATE
-// =========================
-const updateEmployee = async (req, res) => {
-  try {
-    const { code } = req.params;
+const updateEmployee = (req, res) => {
+  const { code } = req.params;
+  const data = req.body;
 
-    const {
-      name,
-      dob,
-      gender,
-      birthPlace,
-      ethnicity,
-      nationality,
-      idCard,
-      phone,
-      email,
-      department,
-      position,
-    } = req.body;
+  const sql = `
+    UPDATE employees
+    SET
+      name=?,
+      dob=?,
+      gender=?,
+      birthPlace=?,
+      ethnicity=?,
+      nationality=?,
+      idCard=?,
+      phone=?,
+      email=?,
+      department_id=?,
+      position_id=?
+    WHERE code=?
+  `;
 
-    const employee = await db.Employee.findOne({
-      where: { code },
-    });
+  connection.query(
+    sql,
+    [
+      data.name,
+      data.dob,
+      data.gender,
+      data.birthPlace,
+      data.ethnicity,
+      data.nationality,
+      data.idCard,
+      data.phone,
+      data.email,
 
-    if (!employee) {
-      return res.status(404).json({
-        message: "Nhân viên không tồn tại",
+      // 🔥 FIX CỐT LÕI
+      data.department_id,
+      data.position_id,
+
+      code,
+    ],
+    (err) => {
+      if (err) {
+        console.log(err);
+        return res.status(500).json({
+          message: "Update lỗi",
+        });
+      }
+
+      res.json({
+        message: "Cập nhật thành công",
       });
-    }
-
-    await employee.update({
-      name,
-      dob,
-      gender,
-      birthPlace,
-      ethnicity,
-      nationality,
-      idCard,
-      phone,
-      email,
-      department,
-      position,
-    });
-
-    return res.json({
-      message: "Cập nhật thành công",
-    });
-  } catch (error) {
-    console.log(error);
-
-    return res.status(500).json({
-      message: "Lỗi cập nhật",
-    });
-  }
+    },
+  );
 };
 
+// =========================
+// RESET PASSWORD
+// =========================
 const resetPassword = async (req, res) => {
   try {
     const { code } = req.params;
@@ -109,7 +129,6 @@ const resetPassword = async (req, res) => {
     });
   } catch (error) {
     console.log(error);
-
     return res.status(500).json({
       message: "Lỗi reset password",
     });

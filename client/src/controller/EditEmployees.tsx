@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import axios from "axios";
+import toast from "react-hot-toast";
 
 type FormType = {
   name: string;
@@ -28,6 +29,25 @@ export default function EditEmployee() {
   const { code } = useParams();
 
   const [loading, setLoading] = useState(false);
+
+  const [openEmployeeMenu, setOpenEmployeeMenu] = useState(true);
+
+  const user = JSON.parse(localStorage.getItem("user") ?? "{}");
+  const positions = [
+    "Giám đốc",
+    "Phó giám đốc",
+    "Trưởng phòng",
+    "Nhân viên",
+    "Thực tập sinh",
+  ];
+
+  const departments = [
+    "CNTT",
+    "Kinh doanh",
+    "Marketing",
+    "Tài chính - Kế toán",
+    "Sản xuất",
+  ];
 
   const [form, setForm] = useState<FormType>({
     name: "",
@@ -69,7 +89,7 @@ export default function EditEmployee() {
     return Math.abs(new Date(diff).getUTCFullYear() - 1970);
   };
 
-  // ================= LOAD EMPLOYEE DETAIL =================
+  // ================= LOAD DETAIL =================
   useEffect(() => {
     const fetchEmployee = async () => {
       try {
@@ -82,7 +102,8 @@ export default function EditEmployee() {
         setForm(res.data);
       } catch (err) {
         console.error(err);
-        alert("Không tải được hồ sơ nhân viên");
+
+        toast.error("Không tải được hồ sơ nhân viên");
       } finally {
         setLoading(false);
       }
@@ -103,27 +124,142 @@ export default function EditEmployee() {
         form,
       );
 
-      alert("Cập nhật thành công");
+      toast.success("Cập nhật thành công");
 
       navigate("/admin/employees/list");
     } catch (err: any) {
-      alert(err?.response?.data?.message || "Cập nhật thất bại");
+      toast.error(err?.response?.data?.message || "Cập nhật thất bại");
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="flex h-screen bg-gray-100">
+    <div className="flex h-screen bg-gray-100 font-sans">
       {/* SIDEBAR */}
       <div className="w-64 bg-blue-700 text-white p-5 flex flex-col">
-        <h2 className="text-2xl font-bold mb-6">Admin Panel</h2>
+        <h2 className="text-2xl font-bold mb-6 tracking-wide">Admin Panel</h2>
 
+        {/* USER */}
+        <div className="flex items-center gap-3 mb-6 p-2 rounded bg-blue-600">
+          <div
+            className="
+              w-10
+              h-10
+              bg-white
+              text-blue-700
+              flex
+              items-center
+              justify-center
+              rounded-full
+              font-bold
+            "
+          >
+            {user?.username?.charAt(0)?.toUpperCase() || "?"}
+          </div>
+
+          <div>
+            <p className="font-semibold">{user?.username}</p>
+
+            <p className="text-xs text-blue-200">Administrator</p>
+          </div>
+        </div>
+
+        {/* MENU */}
+        <nav className="flex flex-col gap-2">
+          <button
+            onClick={() => navigate("/admin")}
+            className="
+              p-2
+              hover:bg-blue-600
+              rounded
+              text-left
+            "
+          >
+            Tổng quan
+          </button>
+
+          <button
+            className="
+              p-2
+              hover:bg-blue-600
+              rounded
+              text-left
+            "
+          >
+            Chấm công
+          </button>
+
+          {/* EMPLOYEE MENU */}
+          <div>
+            <button
+              onClick={() => setOpenEmployeeMenu(!openEmployeeMenu)}
+              className="
+                p-2
+                hover:bg-blue-600
+                rounded
+                w-full
+                text-left
+              "
+            >
+              Nhân viên ▾
+            </button>
+
+            {openEmployeeMenu && (
+              <div className="ml-4 mt-2 flex flex-col gap-2">
+                <button
+                  onClick={() => navigate("/admin/employees/add")}
+                  className="
+                    p-2
+                    bg-blue-600
+                    rounded
+                    text-sm
+                    text-left
+                  "
+                >
+                  ➕ Thêm nhân viên
+                </button>
+
+                <button
+                  onClick={() => navigate("/admin/employees/list")}
+                  className="
+                    p-2
+                    bg-blue-600
+                    rounded
+                    text-sm
+                    text-left
+                  "
+                >
+                  📋 Danh sách nhân viên
+                </button>
+              </div>
+            )}
+          </div>
+
+          <button
+            className="
+              p-2
+              hover:bg-blue-600
+              rounded
+              text-left
+            "
+          >
+            Lương
+          </button>
+        </nav>
+
+        {/* LOGOUT */}
         <button
-          onClick={() => navigate("/admin/employees/list")}
-          className="bg-white text-blue-700 py-2 rounded"
+          className="
+            mt-auto
+            bg-red-500
+            hover:bg-red-600
+            py-2
+            rounded
+            transition
+          "
         >
-          ← Quay danh sách
+          Đăng xuất
         </button>
       </div>
 
@@ -134,14 +270,33 @@ export default function EditEmployee() {
 
           <button
             onClick={() => navigate(-1)}
-            className="bg-gray-600 text-white px-4 py-2 rounded"
+            className="
+              bg-gray-600
+              hover:bg-gray-700
+              text-white
+              px-4
+              py-2
+              rounded
+              transition
+            "
           >
-            Huỷ
+            ← Quay lại
           </button>
         </div>
 
-        <div className="bg-white p-8 rounded-2xl shadow-lg grid grid-cols-2 gap-5">
-          {/* THÔNG TIN CÁ NHÂN */}
+        {/* FORM */}
+        <div
+          className="
+            bg-white
+            p-8
+            rounded-2xl
+            shadow-lg
+            grid
+            grid-cols-2
+            gap-5
+          "
+        >
+          {/* PERSONAL */}
           <h2 className="col-span-2 text-xl font-bold">Thông tin cá nhân</h2>
 
           <Field
@@ -189,37 +344,48 @@ export default function EditEmployee() {
           />
 
           <div>
-            <label>Ngày sinh</label>
+            <label className="text-sm font-medium">Ngày sinh</label>
 
             <input
               type="date"
               name="dob"
               value={form.dob}
               onChange={handleChange}
-              className="w-full border p-2 rounded"
+              className="
+                w-full
+                border
+                p-2
+                rounded
+              "
             />
           </div>
 
           <div>
-            <label>Giới tính</label>
+            <label className="text-sm font-medium">Giới tính</label>
 
             <select
               name="gender"
               value={form.gender}
               onChange={handleChange}
-              className="w-full border p-2 rounded"
+              className="
+                w-full
+                border
+                p-2
+                rounded
+              "
             >
               <option value="Nam">Nam</option>
+
               <option value="Nữ">Nữ</option>
             </select>
           </div>
 
           <div className="col-span-2 bg-gray-100 p-3 rounded">
-            Tuổi:
-            <b> {calculateAge(form.dob)}</b>
+            👤 Tuổi:
+            <b> {calculateAge(form.dob) || "--"}</b>
           </div>
 
-          {/* THÔNG TIN KHÁC */}
+          {/* EXTRA */}
           <h2 className="col-span-2 text-xl font-bold mt-4">
             Thông tin bổ sung
           </h2>
@@ -245,34 +411,76 @@ export default function EditEmployee() {
             onChange={handleChange}
           />
 
-          <Field
-            label="Phòng ban"
-            name="department"
-            value={form.department}
-            onChange={handleChange}
-          />
-
-          <Field
-            label="Chức vụ"
-            name="position"
-            value={form.position}
-            onChange={handleChange}
-          />
-
-          {/* chỉ admin xem, không sửa pass ở đây */}
           <div>
-            <label>Password hiện tại</label>
+            <label className="text-sm font-medium">Phòng ban</label>
+
+            <select
+              name="department"
+              value={form.department}
+              onChange={handleChange}
+              className="
+      w-full
+      border
+      p-2
+      rounded
+      focus:ring-2
+      focus:ring-blue-500
+      outline-none
+    "
+            >
+              <option value="">-- Chọn phòng ban --</option>
+
+              {departments.map((d, i) => (
+                <option key={i} value={d}>
+                  {d}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div>
+            <label className="text-sm font-medium">Chức vụ</label>
+
+            <select
+              name="position"
+              value={form.position}
+              onChange={handleChange}
+              className="
+      w-full
+      border
+      p-2
+      rounded
+      focus:ring-2
+      focus:ring-blue-500
+      outline-none
+    "
+            >
+              <option value="">-- Chọn chức vụ --</option>
+
+              {positions.map((p, i) => (
+                <option key={i} value={p}>
+                  {p}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div>
+            <label className="text-sm font-medium">Password hiện tại</label>
 
             <input
-              value={form.password}
+              type="password"
+              value="••••••••"
               disabled
               className="
-                w-full
-                border
-                p-2
-                rounded
-                bg-gray-100
-              "
+      w-full
+      border
+      p-2
+      rounded
+      bg-gray-100
+      text-gray-500
+      cursor-not-allowed
+    "
             />
           </div>
 
@@ -281,11 +489,13 @@ export default function EditEmployee() {
             <button
               onClick={() => navigate(-1)}
               className="
-               flex-1
-               bg-gray-500
-               text-white
-               py-3
-               rounded
+                flex-1
+                bg-gray-500
+                hover:bg-gray-600
+                text-white
+                py-3
+                rounded
+                transition
               "
             >
               Huỷ
@@ -295,12 +505,14 @@ export default function EditEmployee() {
               onClick={handleUpdate}
               disabled={loading}
               className="
-               flex-1
-               bg-blue-600
-               hover:bg-blue-700
-               text-white
-               py-3
-               rounded
+                flex-1
+                bg-blue-600
+                hover:bg-blue-700
+                text-white
+                py-3
+                rounded
+                transition
+                disabled:bg-gray-400
               "
             >
               {loading ? "Đang lưu..." : "💾 Cập nhật nhân viên"}
@@ -326,6 +538,9 @@ function Field({ label, name, value, onChange }: any) {
           border
           p-2
           rounded
+          focus:ring-2
+          focus:ring-blue-500
+          outline-none
         "
       />
     </div>

@@ -1,13 +1,10 @@
 import connection from "../config/db.js";
-import bcrypt from "bcrypt";
 
 // ================= CREATE =================
 const createEmployee = async (req, res) => {
   const data = req.body;
 
   try {
-    const hashedPassword = await bcrypt.hash(data.password, 10);
-
     function getPositionId() {
       return new Promise((resolve, reject) => {
         connection.query(
@@ -71,7 +68,7 @@ const createEmployee = async (req, res) => {
         department_id,
         data.email,
         data.idCard,
-        hashedPassword,
+        data.password,
         data.phone,
         data.birthPlace,
         data.ethnicity,
@@ -176,7 +173,7 @@ const updateEmployee = (req, res) => {
 const resetPassword = async (req, res) => {
   const { code } = req.params;
 
-  const newPass = await bcrypt.hash("123456", 10);
+  const newPass = "123456";
 
   connection.query(
     "UPDATE employees SET password=? WHERE code=?",

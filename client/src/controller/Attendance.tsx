@@ -1,255 +1,303 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
+import axios from "axios";
 
-const timesheetData = [
-  {
-    id: 1,
-    name: "Nguyen Van A",
-    code: "EMP001",
-    project: "ERP System",
-    date: "2026-04-22",
-    checkIn: "08:00",
-    checkOut: "17:30",
-    worked: 8.5,
-    break: 1,
-    ot: 0.5,
-    status: "Submitted",
-    payroll: "Pending",
-  },
-  {
-    id: 2,
-    name: "Tran Thi B",
-    code: "EMP002",
-    project: "HRM Project",
-    date: "2026-04-22",
-    checkIn: "08:10",
-    checkOut: "18:20",
-    worked: 9,
-    break: 1,
-    ot: 1,
-    status: "Approved",
-    payroll: "Approved",
-  },
-  {
-    id: 3,
-    name: "Le Van C",
-    code: "EMP003",
-    project: "Mobile App",
-    date: "2026-04-22",
-    checkIn: "09:00",
-    checkOut: "17:00",
-    worked: 7,
-    break: 1,
-    ot: 0,
-    status: "Review",
-    payroll: "Pending",
-  },
-];
+type User = {
+  username: string;
+  role: string;
+};
+
+type Attendance = {
+  id: number;
+  employee_id: number;
+  employee_name: string;
+  check_in: string;
+  check_out: string;
+  status: string;
+};
 
 export default function AttendancePage() {
-  const [search, setSearch] = useState("");
+  const navigate = useNavigate();
 
-  const filtered = timesheetData.filter((item) =>
-    item.name.toLowerCase().includes(search.toLowerCase()),
-  );
+  const [user, setUser] = useState<User | null>(null);
 
-  const badge = (s: string) => {
-    if (s === "Approved") {
-      return "bg-green-100 text-green-700";
+  const [openEmployeeMenu, setOpenEmployeeMenu] = useState(false);
+
+  const [loading, setLoading] = useState(false);
+
+  const getVNDate = () => {
+    const now = new Date();
+    const vn = new Date(now.getTime() + 7 * 60 * 60 * 1000);
+    return vn.toISOString().split("T")[0];
+  };
+
+  const [selectedDate, setSelectedDate] = useState(getVNDate());
+
+  const [attendanceList, setAttendanceList] = useState<Attendance[]>([]);
+
+  const [summary, setSummary] = useState({
+    present: 0,
+    late: 0,
+    absent: 0,
+  });
+
+  // =====================================
+  // CHECK LOGIN
+  // =====================================
+
+  useEffect(() => {
+    const data = localStorage.getItem("user");
+
+    if (!data) {
+      navigate("/");
+      return;
     }
-    if (s === "Pending") {
-      return "bg-yellow-100 text-yellow-700";
+
+    const parsed: User = JSON.parse(data);
+
+    if (parsed.role !== "admin") {
+      navigate("/user");
+      return;
     }
-    return "bg-blue-100 text-blue-700";
+
+    setUser(parsed);
+  }, [navigate]);
+
+  // =====================================
+  // FETCH ATTENDANCE
+  // =====================================
+
+  useEffect(() => {
+    fetchAttendance();
+  }, [selectedDate]);
+
+  const fetchAttendance = async () => {
+    try {
+      setLoading(true);
+
+      const res = await axios.get("http://localhost:5000/api/attendance", {
+        params: {
+          date: selectedDate,
+        },
+      });
+
+      setAttendanceList(res.data || []);
+
+      setSummary({
+        present: res.data.length,
+        late: 0,
+        absent: 0,
+      });
+    } catch (err) {
+      console.log(err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // =====================================
+  // LOGOUT
+  // =====================================
+
+  const handleLogout = () => {
+    localStorage.removeItem("user");
+
+    localStorage.removeItem("token");
+
+    navigate("/");
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 p-6 space-y-6">
-      {/* HEADER */}
-      <div className="flex justify-between items-center">
-        <div>
-          <h1 className="text-3xl font-bold">Timesheet & Workforce Tracking</h1>
+    <div className="flex h-screen bg-gray-100">
+      {/* SIDEBAR */}
+      <div className="w-64 bg-blue-700 text-white p-5 flex flex-col">
+        <h2 className="text-2xl font-bold mb-6">Admin Panel</h2>
 
-          <p className="text-gray-500 mt-2">
-            Track work hours, monitor activity, approve timesheets for payroll
-            and project management
-          </p>
+        {/* USER */}
+        <div className="flex items-center gap-3 mb-6 p-2 rounded bg-blue-600">
+          <div className="w-10 h-10 bg-white text-blue-700 flex items-center justify-center rounded-full font-bold">
+            {user?.username?.charAt(0)?.toUpperCase() || "?"}
+          </div>
+
+          <div>
+            <p className="font-semibold">{user?.username}</p>
+
+            <p className="text-xs text-blue-200">Administrator</p>
+          </div>
         </div>
 
-        <div className="space-x-3">
-          <button className="px-4 py-2 bg-white rounded-2xl shadow">
-            Export Report
+        {/* MENU */}
+        <nav className="flex flex-col gap-2">
+          <button
+            onClick={() => navigate("/admin")}
+            className="text-left p-2 hover:bg-blue-600 rounded"
+          >
+            Tổng quan
           </button>
 
-          <button className="px-4 py-2 bg-black text-white rounded-2xl">
-            Approve Payroll
+          <button
+            onClick={() => navigate("/admin/attendance")}
+            className="text-left p-2 hover:bg-blue-600 rounded"
+          >
+            Chấm công
           </button>
-        </div>
-      </div>
 
-      {/* OVERVIEW */}
-      <div className="grid md:grid-cols-3 xl:grid-cols-6 gap-4">
-        <Card title="Employees Active" value="120" />
-        <Card title="Worked Hours" value="842h" />
-        <Card title="Overtime" value="27h" />
-        <Card title="Attendance Rate" value="96%" />
-        <Card title="Pending Approval" value="18" />
-        <Card title="Payroll Amount" value="42,500,000" />
-      </div>
+          {/* EMPLOYEE */}
+          <div>
+            <button
+              onClick={() => setOpenEmployeeMenu(!openEmployeeMenu)}
+              className="text-left p-2 hover:bg-blue-600 rounded w-full"
+            >
+              Nhân viên ▾
+            </button>
 
-      {/* FILTERS */}
-      <div className="bg-white p-5 rounded-3xl shadow flex gap-4 flex-wrap">
-        <input
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          placeholder="Search employee..."
-          className="border rounded-xl px-4 py-2"
-        />
+            {openEmployeeMenu && (
+              <div className="ml-4 mt-2 flex flex-col gap-2">
+                <button
+                  onClick={() => navigate("/admin/employees/add")}
+                  className="text-left p-2 bg-blue-600 rounded text-sm"
+                >
+                  ➕ Thêm nhân viên
+                </button>
 
-        <select className="border rounded-xl px-4 py-2">
-          <option>All Projects</option>
-          <option>ERP System</option>
-          <option>HRM Project</option>
-        </select>
+                <button
+                  onClick={() => navigate("/admin/employees/list")}
+                  className="text-left p-2 bg-blue-600 rounded text-sm"
+                >
+                  📋 Danh sách nhân viên
+                </button>
+              </div>
+            )}
+          </div>
 
-        <select className="border rounded-xl px-4 py-2">
-          <option>Approval Status</option>
-          <option>Pending</option>
-          <option>Approved</option>
-        </select>
+          <button className="text-left p-2 hover:bg-blue-600 rounded">
+            Lương
+          </button>
+        </nav>
 
-        <button className="px-4 py-2 bg-black text-white rounded-xl">
-          Filter
+        {/* LOGOUT */}
+        <button
+          onClick={handleLogout}
+          className="mt-auto bg-red-500 py-2 rounded"
+        >
+          Đăng xuất
         </button>
       </div>
 
-      {/* TIMESHEET TABLE */}
-      <div className="bg-white rounded-3xl shadow overflow-hidden">
-        <div className="p-5 border-b font-semibold">Employee Timesheets</div>
+      {/* CONTENT */}
+      <div className="flex-1 p-6 overflow-auto">
+        {/* HEADER */}
+        <div className="flex items-center justify-between mb-6">
+          <div>
+            <h1 className="text-3xl font-bold text-gray-800">
+              Quản lý chấm công
+            </h1>
 
-        <table className="w-full">
-          <thead className="bg-gray-50">
-            <tr className="text-left">
-              <th className="p-4">Employee</th>
-              <th>Project</th>
-              <th>Start</th>
-              <th>End</th>
-              <th>Worked</th>
-              <th>Break</th>
-              <th>OT</th>
-              <th>Status</th>
-              <th>Payroll</th>
-              <th>Actions</th>
-            </tr>
-          </thead>
-
-          <tbody>
-            {filtered.map((item) => (
-              <tr key={item.id} className="border-t hover:bg-gray-50">
-                <td className="p-4">
-                  <div className="font-medium">{item.name}</div>
-
-                  <div className="text-sm text-gray-500">{item.code}</div>
-                </td>
-
-                <td>{item.project}</td>
-
-                <td>{item.checkIn}</td>
-
-                <td>{item.checkOut}</td>
-
-                <td>{item.worked}h</td>
-
-                <td>{item.break}h</td>
-
-                <td>{item.ot}h</td>
-
-                <td>
-                  <span
-                    className={`px-3 py-1 rounded-full text-sm ${badge(item.status)}`}
-                  >
-                    {item.status}
-                  </span>
-                </td>
-
-                <td>
-                  <span
-                    className={`px-3 py-1 rounded-full text-sm ${badge(item.payroll)}`}
-                  >
-                    {item.payroll}
-                  </span>
-                </td>
-
-                <td className="space-x-2">
-                  <button className="px-3 py-1 border rounded-xl">View</button>
-
-                  <button className="px-3 py-1 border rounded-xl">
-                    Approve
-                  </button>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-
-      {/* ACTIVITY TRACKING */}
-      <div className="grid md:grid-cols-2 gap-6">
-        <div className="bg-white rounded-3xl shadow p-6">
-          <h2 className="font-semibold mb-5">Project Hours Tracking</h2>
-
-          <Progress label="ERP System" value={76} />
-
-          <Progress label="HRM Project" value={62} />
-
-          <Progress label="Mobile App" value={48} />
-        </div>
-
-        <div className="bg-white rounded-3xl shadow p-6">
-          <h2 className="font-semibold mb-5">Payroll Approval Queue</h2>
-
-          <div className="space-y-4">
-            <Item name="18 Pending Timesheets" />
-
-            <Item name="7 Payroll Reviews" />
-
-            <Item name="5 Overtime Requests" />
+            <p className="text-gray-500 mt-1">Theo dõi nhân viên đi làm</p>
           </div>
+
+          <input
+            type="date"
+            value={selectedDate}
+            onChange={(e) => setSelectedDate(e.target.value)}
+            className="border px-4 py-2 rounded-xl shadow-sm"
+          />
+        </div>
+
+        {/* SUMMARY */}
+        <div className="grid grid-cols-3 gap-4 mb-6">
+          <SummaryCard
+            title="Đi làm"
+            value={summary.present}
+            color="bg-green-500"
+          />
+
+          <SummaryCard
+            title="Đi trễ"
+            value={summary.late}
+            color="bg-yellow-500"
+          />
+
+          <SummaryCard title="Nghỉ" value={summary.absent} color="bg-red-500" />
+        </div>
+
+        {/* TABLE */}
+        <div className="bg-white rounded-2xl shadow overflow-hidden">
+          <div className="p-5 border-b">
+            <h2 className="text-xl font-semibold">Danh sách chấm công</h2>
+          </div>
+
+          {loading ? (
+            <div className="p-10 text-center">Đang tải dữ liệu...</div>
+          ) : (
+            <table className="w-full">
+              <thead className="bg-blue-600 text-white">
+                <tr>
+                  <th className="p-4 text-left">ID</th>
+
+                  <th className="p-4 text-left">Nhân viên</th>
+
+                  <th className="p-4 text-center">Check In</th>
+
+                  <th className="p-4 text-center">Check Out</th>
+
+                  <th className="p-4 text-center">Trạng thái</th>
+                </tr>
+              </thead>
+
+              <tbody>
+                {attendanceList.length === 0 ? (
+                  <tr>
+                    <td colSpan={5} className="text-center p-10 text-gray-400">
+                      Không có dữ liệu
+                    </td>
+                  </tr>
+                ) : (
+                  attendanceList.map((item) => (
+                    <tr
+                      key={item.id}
+                      className="border-b hover:bg-gray-50 transition"
+                    >
+                      <td className="p-4">{item.id}</td>
+                      <td className="p-4">{item.employee_name}</td>
+                      <td className="p-4 text-center">
+                        {item.check_in || "--"}
+                      </td>
+                      <td className="p-4 text-center">
+                        {item.check_out || "--"}
+                      </td>
+                      <td className="p-4 text-center">
+                        <span
+                          className={`px-3 py-1 rounded-full text-sm text-white
+                            ${
+                              item.status === "present"
+                                ? "bg-green-500"
+                                : item.status === "late"
+                                  ? "bg-yellow-500"
+                                  : "bg-red-500"
+                            }`}
+                        >
+                          {item.status}
+                        </span>
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          )}
         </div>
       </div>
     </div>
   );
 }
 
-function Card({ title, value }: { title: string; value: string }) {
+function SummaryCard({ title, value, color }: any) {
   return (
-    <div className="bg-white rounded-3xl shadow p-5">
-      <p className="text-sm text-gray-500">{title}</p>
+    <div className={`${color} text-white rounded-2xl p-5 shadow`}>
+      <p className="text-sm opacity-90">{title}</p>
 
-      <h2 className="text-2xl font-bold mt-2">{value}</h2>
+      <h2 className="text-4xl font-bold mt-2">{value}</h2>
     </div>
   );
-}
-
-function Progress({ label, value }: any) {
-  return (
-    <div className="mb-5">
-      <div className="flex justify-between mb-2">
-        <span>{label}</span>
-        <span>{value}%</span>
-      </div>
-
-      <div className="w-full bg-gray-200 rounded-full h-3">
-        <div
-          className="bg-black h-3 rounded-full"
-          style={{
-            width: `${value}%`,
-          }}
-        />
-      </div>
-    </div>
-  );
-}
-
-function Item({ name }: any) {
-  return <div className="border rounded-2xl p-4">{name}</div>;
 }
