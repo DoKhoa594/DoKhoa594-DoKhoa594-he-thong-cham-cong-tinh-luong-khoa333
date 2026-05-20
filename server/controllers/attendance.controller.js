@@ -5,15 +5,20 @@ import connection from "../config/db.js";
 // =====================================
 
 const getVNDate = () => {
-  const d = new Date();
-  return new Date(d.getTime() + 7 * 60 * 60 * 1000).toISOString().split("T")[0];
+  const now = new Date();
+
+  // lấy ngày VN thật
+  now.setHours(now.getHours() + 7);
+
+  return now.toISOString().split("T")[0];
 };
 
 const getVNTime = () => {
-  const d = new Date();
-  return new Date(d.getTime() + 7 * 60 * 60 * 1000)
-    .toTimeString()
-    .split(" ")[0];
+  const now = new Date();
+
+  now.setHours(now.getHours() + 7);
+
+  return now.toTimeString().split(" ")[0];
 };
 
 // =====================================
@@ -23,26 +28,40 @@ const getVNTime = () => {
 export const getAttendances = async (req, res) => {
   try {
     const { date } = req.query;
+    const today = getVNDate();
 
-    console.log("DATE =", date);
-    console.log("WHERE RUNNING");
+    console.log("DATE FILTER =", date);
 
     const sql = `
       SELECT
-        attendance.id,
-        attendance.employee_id,
+        employees.id,
         employees.name AS employee_name,
+
+        attendance.id AS attendance_id,
+        attendance.employee_id,
         attendance.work_date,
         attendance.check_in,
         attendance.check_out,
-        attendance.status
-      FROM attendance
-      INNER JOIN employees
-        ON attendance.employee_id = employees.id
-      WHERE attendance.work_date = ?
+         attendance.reason,
+
+     CASE
+  WHEN attendance.status IS NULL
+       AND DATE(?) <= DATE(?)
+  THEN 'absent'
+
+  ELSE attendance.status
+END AS status
+
+      FROM employees
+
+      LEFT JOIN attendance
+        ON employees.id = attendance.employee_id
+        AND DATE(attendance.work_date) = DATE(?)
+
+      ORDER BY employees.id DESC
     `;
 
-    connection.query(sql, [date], (err, results) => {
+    connection.query(sql, [date, today, date], (err, results) => {
       if (err) {
         console.log(err);
 
@@ -50,6 +69,8 @@ export const getAttendances = async (req, res) => {
           message: "Lỗi lấy attendance",
         });
       }
+
+      console.log("RESULT =", results);
 
       const present = results.filter(
         (item) => item.status === "present",
@@ -59,7 +80,7 @@ export const getAttendances = async (req, res) => {
 
       const absent = results.filter((item) => item.status === "absent").length;
 
-      res.json({
+      return res.json({
         attendance: results,
         summary: {
           present,
@@ -71,7 +92,7 @@ export const getAttendances = async (req, res) => {
   } catch (err) {
     console.log(err);
 
-    res.status(500).json({
+    return res.status(500).json({
       message: "Server Error",
     });
   }
@@ -86,6 +107,7 @@ export const checkIn = async (req, res) => {
     const { employee_id } = req.body;
 
     const today = getVNDate();
+
     const time = getVNTime();
 
     const checkSql = `
@@ -98,6 +120,7 @@ export const checkIn = async (req, res) => {
     connection.query(checkSql, [employee_id, today], (err, results) => {
       if (err) {
         console.log(err);
+
         return res.status(500).json({
           message: "Database error",
         });
@@ -113,19 +136,25 @@ export const checkIn = async (req, res) => {
 
       const insertSql = `
         INSERT INTO attendance
-        (employee_id, work_date, check_in, status)
+        (
+          employee_id,
+          work_date,
+          check_in,
+          status
+        )
         VALUES (?, ?, ?, ?)
       `;
 
       connection.query(insertSql, [employee_id, today, time, status], (err) => {
         if (err) {
           console.log(err);
+
           return res.status(500).json({
             message: "Check in thất bại",
           });
         }
 
-        res.json({
+        return res.json({
           message: "Check in thành công",
           time,
           date: today,
@@ -134,7 +163,8 @@ export const checkIn = async (req, res) => {
     });
   } catch (err) {
     console.log(err);
-    res.status(500).json({
+
+    return res.status(500).json({
       message: "Server Error",
     });
   }
@@ -149,6 +179,7 @@ export const checkOut = async (req, res) => {
     const { employee_id } = req.body;
 
     const today = getVNDate();
+
     const time = getVNTime();
 
     const sql = `
@@ -161,12 +192,13 @@ export const checkOut = async (req, res) => {
     connection.query(sql, [time, employee_id, today], (err) => {
       if (err) {
         console.log(err);
+
         return res.status(500).json({
           message: "Check out thất bại",
         });
       }
 
-      res.json({
+      return res.json({
         message: "Check out thành công",
         time,
         date: today,
@@ -174,7 +206,8 @@ export const checkOut = async (req, res) => {
     });
   } catch (err) {
     console.log(err);
-    res.status(500).json({
+
+    return res.status(500).json({
       message: "Server Error",
     });
   }

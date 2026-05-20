@@ -16,7 +16,7 @@ export default function Attendance() {
       const res = await axios.post(
         "http://localhost:5000/api/attendance/checkin",
         {
-          employee_id: employee.id || 9,
+          employee_id: 11,
         },
       );
 
@@ -35,7 +35,7 @@ export default function Attendance() {
       const res = await axios.post(
         "http://localhost:5000/api/attendance/checkout",
         {
-          employee_id: employee.id || 1,
+          employee_id: employee.id || 11,
         },
       );
 
@@ -64,7 +64,7 @@ export default function Attendance() {
           </p>
 
           <p className="text-gray-700">
-            <span className="font-semibold">ID:</span> {employee.id || 1}
+            <span className="font-semibold">ID:</span> {employee.id || 2}
           </p>
         </div>
 

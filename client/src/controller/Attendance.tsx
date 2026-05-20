@@ -11,9 +11,11 @@ type Attendance = {
   id: number;
   employee_id: number;
   employee_name: string;
+  work_date: string;
   check_in: string;
   check_out: string;
   status: string;
+  reason?: string;
 };
 
 export default function AttendancePage() {
@@ -25,9 +27,14 @@ export default function AttendancePage() {
 
   const [loading, setLoading] = useState(false);
 
+  const [filterStatus, setFilterStatus] = useState("all");
+
+  const [showTable, setShowTable] = useState(false);
+
   const getVNDate = () => {
     const now = new Date();
     const vn = new Date(now.getTime() + 7 * 60 * 60 * 1000);
+
     return vn.toISOString().split("T")[0];
   };
 
@@ -81,12 +88,18 @@ export default function AttendancePage() {
         },
       });
 
-      setAttendanceList(res.data || []);
+      console.log("API RESPONSE =", res.data);
+
+      const attendanceData = Array.isArray(res.data.attendance)
+        ? res.data.attendance
+        : [];
+
+      setAttendanceList(attendanceData);
 
       setSummary({
-        present: res.data.length,
-        late: 0,
-        absent: 0,
+        present: res.data.summary?.present || 0,
+        late: res.data.summary?.late || 0,
+        absent: res.data.summary?.absent || 0,
       });
     } catch (err) {
       console.log(err);
@@ -94,6 +107,15 @@ export default function AttendancePage() {
       setLoading(false);
     }
   };
+
+  // =====================================
+  // FILTER
+  // =====================================
+
+  const filteredAttendance =
+    filterStatus === "all"
+      ? attendanceList
+      : attendanceList.filter((item) => item.status === filterStatus);
 
   // =====================================
   // LOGOUT
@@ -206,20 +228,61 @@ export default function AttendancePage() {
 
         {/* SUMMARY */}
         <div className="grid grid-cols-3 gap-4 mb-6">
-          <SummaryCard
-            title="Đi làm"
-            value={summary.present}
-            color="bg-green-500"
-          />
+          <div
+            onClick={() => {
+              setFilterStatus("present");
+              setShowTable(true);
+            }}
+            className="cursor-pointer"
+          >
+            <SummaryCard
+              title={`Đi làm (${summary.present}/${attendanceList.length})`}
+              value={summary.present}
+              color="bg-green-500"
+            />
+          </div>
 
-          <SummaryCard
-            title="Đi trễ"
-            value={summary.late}
-            color="bg-yellow-500"
-          />
+          <div
+            onClick={() => {
+              setFilterStatus("late");
+              setShowTable(true);
+            }}
+            className="cursor-pointer"
+          >
+            <SummaryCard
+              title={`Đi trễ (${summary.late}/${attendanceList.length})`}
+              value={summary.late}
+              color="bg-yellow-500"
+            />
+          </div>
 
-          <SummaryCard title="Nghỉ" value={summary.absent} color="bg-red-500" />
+          <div
+            onClick={() => {
+              setFilterStatus("absent");
+              setShowTable(true);
+            }}
+            className="cursor-pointer"
+          >
+            <SummaryCard
+              title={`Nghỉ (${summary.absent}/${attendanceList.length})`}
+              value={summary.absent}
+              color="bg-red-500"
+            />
+          </div>
         </div>
+
+        {/* RESET FILTER */}
+        {showTable && (
+          <button
+            onClick={() => {
+              setFilterStatus("all");
+              setShowTable(false);
+            }}
+            className="mb-4 px-4 py-2 bg-gray-300 rounded"
+          >
+            Ẩn danh sách
+          </button>
+        )}
 
         {/* TABLE */}
         <div className="bg-white rounded-2xl shadow overflow-hidden">
@@ -242,43 +305,54 @@ export default function AttendancePage() {
                   <th className="p-4 text-center">Check Out</th>
 
                   <th className="p-4 text-center">Trạng thái</th>
+                  <th className="p-4 text-center">Lý do</th>
                 </tr>
               </thead>
 
               <tbody>
-                {attendanceList.length === 0 ? (
+                {filteredAttendance.length === 0 ? (
                   <tr>
                     <td colSpan={5} className="text-center p-10 text-gray-400">
                       Không có dữ liệu
                     </td>
                   </tr>
                 ) : (
-                  attendanceList.map((item) => (
-                    <tr
-                      key={item.id}
-                      className="border-b hover:bg-gray-50 transition"
-                    >
+                  filteredAttendance.map((item) => (
+                    <tr key={item.id} className="border-b hover:bg-gray-50">
                       <td className="p-4">{item.id}</td>
-                      <td className="p-4">{item.employee_name}</td>
+
+                      <td className="p-4">{item.employee_name || "NO NAME"}</td>
+
                       <td className="p-4 text-center">
                         {item.check_in || "--"}
                       </td>
+
                       <td className="p-4 text-center">
                         {item.check_out || "--"}
                       </td>
+
                       <td className="p-4 text-center">
                         <span
-                          className={`px-3 py-1 rounded-full text-sm text-white
-                            ${
-                              item.status === "present"
-                                ? "bg-green-500"
-                                : item.status === "late"
-                                  ? "bg-yellow-500"
-                                  : "bg-red-500"
-                            }`}
+                          className={`px-3 py-1 rounded-full text-white
+                          ${
+                            item.status === "present"
+                              ? "bg-green-500"
+                              : item.status === "late"
+                                ? "bg-yellow-500"
+                                : "bg-red-500"
+                          }`}
                         >
-                          {item.status}
+                          {item.status === "present"
+                            ? "Đi làm"
+                            : item.status === "late"
+                              ? "Đi trễ"
+                              : "Nghỉ"}
                         </span>
+                      </td>
+                      <td className="p-4 text-center">
+                        {item.status === "absent" || item.status === "late"
+                          ? item.reason || "Không có"
+                          : "--"}
                       </td>
                     </tr>
                   ))
@@ -294,7 +368,9 @@ export default function AttendancePage() {
 
 function SummaryCard({ title, value, color }: any) {
   return (
-    <div className={`${color} text-white rounded-2xl p-5 shadow`}>
+    <div
+      className={`${color} text-white rounded-2xl p-5 shadow hover:scale-105 transition`}
+    >
       <p className="text-sm opacity-90">{title}</p>
 
       <h2 className="text-4xl font-bold mt-2">{value}</h2>

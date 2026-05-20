@@ -1,8 +1,9 @@
 import db from "../config/db.js";
 import bcrypt from "bcrypt";
+import connection from "../config/db.js";
 
 // =========================
-// GET DETAIL (TRẢ ID CHO FRONTEND)
+// GET DETAIL
 // =========================
 const getEmployeeByCode = async (req, res) => {
   try {
@@ -10,6 +11,17 @@ const getEmployeeByCode = async (req, res) => {
 
     const employee = await db.Employee.findOne({
       where: { code },
+
+      include: [
+        {
+          model: db.Department,
+          attributes: ["name"],
+        },
+        {
+          model: db.Position,
+          attributes: ["name"],
+        },
+      ],
     });
 
     if (!employee) {
@@ -22,7 +34,10 @@ const getEmployeeByCode = async (req, res) => {
       name: employee.name,
       code: employee.code,
 
-      dob: employee.dob,
+      dob: employee.dob
+        ? new Date(employee.dob).toISOString().split("T")[0]
+        : "",
+
       gender: employee.gender,
 
       birthPlace: employee.birthPlace,
@@ -33,72 +48,76 @@ const getEmployeeByCode = async (req, res) => {
       phone: employee.phone,
       email: employee.email,
 
-      // 🔥 QUAN TRỌNG: TRẢ ID
-      department_id: employee.department_id,
-      position_id: employee.position_id,
+      department: employee.Department?.name || "",
+      position: employee.Position?.name || "",
     });
   } catch (error) {
     console.log(error);
+
     return res.status(500).json({
       message: "Lỗi server",
     });
   }
 };
-//UPDATE
 
-const updateEmployee = (req, res) => {
-  const { code } = req.params;
-  const data = req.body;
+// =========================
+// UPDATE
+// =========================
+const updateEmployee = async (req, res) => {
+  try {
+    const { code } = req.params;
+    const data = req.body;
 
-  const sql = `
-    UPDATE employees
-    SET
-      name=?,
-      dob=?,
-      gender=?,
-      birthPlace=?,
-      ethnicity=?,
-      nationality=?,
-      idCard=?,
-      phone=?,
-      email=?,
-      department_id=?,
-      position_id=?
-    WHERE code=?
-  `;
+    console.log("INPUT:", data);
 
-  connection.query(
-    sql,
-    [
-      data.name,
-      data.dob,
-      data.gender,
-      data.birthPlace,
-      data.ethnicity,
-      data.nationality,
-      data.idCard,
-      data.phone,
-      data.email,
+    const deptName = (data.department || "").trim();
+    const posName = (data.position || "").trim();
 
-      // 🔥 FIX CỐT LÕI
-      data.department_id,
-      data.position_id,
+    const [deptRows] = await connection
+      .promise()
+      .query("SELECT id FROM departments WHERE TRIM(name)=?", [deptName]);
 
-      code,
-    ],
-    (err) => {
-      if (err) {
-        console.log(err);
-        return res.status(500).json({
-          message: "Update lỗi",
-        });
-      }
+    const [posRows] = await connection
+      .promise()
+      .query("SELECT id FROM positions WHERE TRIM(name)=?", [posName]);
 
-      res.json({
-        message: "Cập nhật thành công",
+    console.log("DEPT:", deptRows);
+    console.log("POS:", posRows);
+
+    if (!deptRows.length || !posRows.length) {
+      return res.status(400).json({
+        message: "Sai phòng ban hoặc chức vụ",
       });
-    },
-  );
+    }
+
+    const department_id = deptRows[0].id;
+    const position_id = posRows[0].id;
+
+    const [result] = await connection.promise().query(
+      `
+      UPDATE employees
+      SET department_id=?, position_id=?
+      WHERE code=?
+      `,
+      [department_id, position_id, code],
+    );
+
+    console.log("AFFECTED:", result.affectedRows);
+
+    if (result.affectedRows === 0) {
+      return res.status(404).json({
+        message: "Không tìm thấy employee (sai code)",
+      });
+    }
+
+    return res.json({
+      message: "Update OK",
+      affectedRows: result.affectedRows,
+    });
+  } catch (err) {
+    console.log("ERROR:", err);
+    return res.status(500).json({ message: "Server error" });
+  }
 };
 
 // =========================
@@ -129,6 +148,7 @@ const resetPassword = async (req, res) => {
     });
   } catch (error) {
     console.log(error);
+
     return res.status(500).json({
       message: "Lỗi reset password",
     });

@@ -99,7 +99,9 @@ export default function EditEmployee() {
           `http://localhost:5000/api/get-employee-by-code/${code}`,
         );
 
-        setForm(res.data);
+        setForm({
+          ...res.data,
+        });
       } catch (err) {
         console.error(err);
 

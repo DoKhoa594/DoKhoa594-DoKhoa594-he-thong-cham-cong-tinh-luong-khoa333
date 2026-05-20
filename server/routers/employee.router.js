@@ -9,7 +9,7 @@ import {
   getAttendances,
   checkIn,
   checkOut,
-} from "../controllers/attendanceUser.controller.js";
+} from "../controllers/attendance.controller.js";
 
 const router = express.Router();
 
