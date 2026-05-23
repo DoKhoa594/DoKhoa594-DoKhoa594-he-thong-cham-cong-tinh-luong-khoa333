@@ -6,14 +6,14 @@ import connection from "../config/db.js";
 
 const getAttendances = (req, res) => {
   const sql = `
-  SELECT
-    attendance.*,
-    employees.name AS employee_name
-  FROM attendance
-  JOIN employees
-    ON attendance.employee_id = employees.id
-  ORDER BY attendance.id DESC
-`;
+    SELECT
+      attendance.*,
+      employees.name AS employee_name
+    FROM attendance
+    JOIN employees
+      ON attendance.employee_id = employees.id
+    ORDER BY attendance.id DESC
+  `;
 
   connection.query(sql, (err, result) => {
     if (err) {
@@ -21,6 +21,38 @@ const getAttendances = (req, res) => {
     }
 
     res.json(result);
+  });
+};
+
+// ======================================
+// GET MY ATTENDANCE
+// ======================================
+
+const getMyAttendance = (req, res) => {
+  const { employee_id } = req.params;
+
+  const today = new Date().toLocaleDateString("en-CA", {
+    timeZone: "Asia/Ho_Chi_Minh",
+  });
+
+  const sql = `
+    SELECT *
+    FROM attendance
+    WHERE employee_id = ?
+    AND work_date = ?
+    LIMIT 1
+  `;
+
+  connection.query(sql, [employee_id, today], (err, result) => {
+    if (err) {
+      return res.status(500).json(err);
+    }
+
+    if (result.length === 0) {
+      return res.json(null);
+    }
+
+    res.json(result[0]);
   });
 };
 
@@ -47,8 +79,8 @@ const checkIn = (req, res) => {
   const checkSql = `
     SELECT *
     FROM attendance
-    WHERE employee_id=?
-    AND work_date=?
+    WHERE employee_id = ?
+    AND work_date = ?
   `;
 
   connection.query(checkSql, [employee_id, today], (err, result) => {
@@ -74,9 +106,10 @@ const checkIn = (req, res) => {
         work_date,
         check_in,
         status,
-        reason
+        reason,
+        leave_status
       )
-      VALUES (?, ?, ?, ?, ?)
+      VALUES (?, ?, ?, ?, ?, ?)
     `;
 
     connection.query(
@@ -90,6 +123,9 @@ const checkIn = (req, res) => {
 
         status,
         reason,
+
+        // leave mặc định pending
+        status === "leave" ? "pending" : null,
       ],
       (err, result) => {
         if (err) {
@@ -129,8 +165,8 @@ const checkOut = (req, res) => {
   const checkSql = `
     SELECT *
     FROM attendance
-    WHERE employee_id=?
-    AND work_date=?
+    WHERE employee_id = ?
+    AND work_date = ?
   `;
 
   connection.query(checkSql, [employee_id, today], (err, result) => {
@@ -146,7 +182,6 @@ const checkOut = (req, res) => {
     }
 
     // nghỉ phép thì không được checkout
-
     if (result[0].status === "leave") {
       return res.status(400).json({
         message: "Bạn đang nghỉ phép hôm nay",
@@ -166,9 +201,9 @@ const checkOut = (req, res) => {
 
     const sql = `
       UPDATE attendance
-      SET check_out=?
-      WHERE employee_id=?
-      AND work_date=?
+      SET check_out = ?
+      WHERE employee_id = ?
+      AND work_date = ?
     `;
 
     connection.query(sql, [currentTime, employee_id, today], (err, result) => {
@@ -186,4 +221,63 @@ const checkOut = (req, res) => {
   });
 };
 
-export { getAttendances, checkIn, checkOut };
+// ======================================
+// APPROVE LEAVE
+// ======================================
+
+const approveLeave = (req, res) => {
+  const { id } = req.params;
+
+  const sql = `
+    UPDATE attendance
+    SET leave_status = 'approved'
+    WHERE id = ?
+  `;
+
+  connection.query(sql, [id], (err) => {
+    if (err) {
+      return res.status(500).json({
+        message: "Duyệt đơn thất bại",
+      });
+    }
+
+    res.json({
+      message: "Đã duyệt đơn nghỉ",
+    });
+  });
+};
+
+// ======================================
+// REJECT LEAVE
+// ======================================
+
+const rejectLeave = (req, res) => {
+  const { id } = req.params;
+
+  const sql = `
+    UPDATE attendance
+    SET leave_status = 'rejected'
+    WHERE id = ?
+  `;
+
+  connection.query(sql, [id], (err) => {
+    if (err) {
+      return res.status(500).json({
+        message: "Từ chối đơn thất bại",
+      });
+    }
+
+    res.json({
+      message: "Đã từ chối đơn nghỉ",
+    });
+  });
+};
+
+export {
+  getAttendances,
+  getMyAttendance,
+  checkIn,
+  checkOut,
+  approveLeave,
+  rejectLeave,
+};

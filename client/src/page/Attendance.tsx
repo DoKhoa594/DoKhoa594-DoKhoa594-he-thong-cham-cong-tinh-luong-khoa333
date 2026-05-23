@@ -6,6 +6,7 @@ export default function Attendance() {
   const [checkIn, setCheckIn] = useState<string | null>(null);
 
   const [checkOut, setCheckOut] = useState<string | null>(null);
+  const [attendanceStatus, setAttendanceStatus] = useState<any>(null);
 
   // modal reason
   const [showReasonModal, setShowReasonModal] = useState(false);
@@ -16,10 +17,27 @@ export default function Attendance() {
 
   // lấy user login
   const employee = {
-    id: 38,
+    id: 35,
     username: "Khoa Test",
   };
+  // =========================
+  // GET MY ATTENDANCE
+  // =========================
 
+  const fetchMyAttendance = async () => {
+    try {
+      const res = await axios.get(
+        `http://localhost:5000/api/attendance/my/${employee.id}`,
+      );
+
+      setAttendanceStatus(res.data);
+    } catch (err) {
+      console.log(err);
+    }
+  };
+  React.useEffect(() => {
+    fetchMyAttendance();
+  }, []);
   // =========================
   // CHECK IN
   // =========================
@@ -46,6 +64,7 @@ export default function Attendance() {
       );
 
       setCheckIn(res.data.time);
+      fetchMyAttendance();
 
       toast.success("Check in thành công 🎉");
     } catch (err: any) {
@@ -66,6 +85,7 @@ export default function Attendance() {
       );
 
       setCheckOut(res.data.time);
+      fetchMyAttendance();
 
       toast.success("Check out thành công 👋");
     } catch (err) {
@@ -120,6 +140,7 @@ export default function Attendance() {
         });
 
         toast.success("Đã gửi đơn nghỉ phép 📝");
+        fetchMyAttendance();
       }
 
       setReason("");
@@ -184,7 +205,38 @@ export default function Attendance() {
             Nghỉ
           </button>
         </div>
+        {/* LEAVE STATUS */}
+        {attendanceStatus?.status === "leave" && (
+          <div className="mb-6 rounded-2xl border p-4 bg-white shadow-sm">
+            <h3 className="font-bold text-gray-700 mb-2">
+              Trạng thái nghỉ phép
+            </h3>
 
+            {attendanceStatus.leave_status === "pending" && (
+              <div className="bg-yellow-100 text-yellow-700 px-4 py-2 rounded-xl font-semibold">
+                ⏳ Đang chờ duyệt
+              </div>
+            )}
+
+            {attendanceStatus.leave_status === "approved" && (
+              <div className="bg-green-100 text-green-700 px-4 py-2 rounded-xl font-semibold">
+                ✅ Đã được duyệt nghỉ
+              </div>
+            )}
+
+            {attendanceStatus.leave_status === "rejected" && (
+              <div className="bg-red-100 text-red-700 px-4 py-2 rounded-xl font-semibold">
+                ❌ Đơn nghỉ bị từ chối
+              </div>
+            )}
+
+            {attendanceStatus.reason && (
+              <p className="mt-3 text-sm text-gray-500">
+                Lý do: {attendanceStatus.reason}
+              </p>
+            )}
+          </div>
+        )}
         {/* RESULT */}
         <div className="mt-8 bg-gray-50 border border-gray-100 rounded-2xl p-5">
           <h3 className="text-lg font-bold text-gray-700 mb-4">

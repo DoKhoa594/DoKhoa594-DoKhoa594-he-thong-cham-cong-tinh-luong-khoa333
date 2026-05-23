@@ -7,8 +7,11 @@ import { getDashboard } from "../controllers/Dashboard.controller.js";
 
 import {
   getAttendances,
+  getMyAttendance,
   checkIn,
   checkOut,
+  approveLeave,
+  rejectLeave,
 } from "../controllers/attendance.controller.js";
 
 const router = express.Router();
@@ -43,12 +46,19 @@ const initEmployeeRoutes = (app) => {
 
   // get all attendance
   router.get("/api/attendance", getAttendances);
+  // get my attendance today
+  router.get("/api/attendance/my/:employee_id", getMyAttendance);
 
   // check in
   router.post("/api/attendance/checkin", checkIn);
 
   // check out
   router.post("/api/attendance/checkout", checkOut);
+  // approve leave
+  router.put("/api/attendance/approve/:id", approveLeave);
+
+  // reject leave
+  router.put("/api/attendance/reject/:id", rejectLeave);
 
   return app.use("/", router);
 };

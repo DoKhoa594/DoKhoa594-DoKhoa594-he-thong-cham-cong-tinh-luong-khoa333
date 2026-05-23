@@ -11,52 +11,37 @@ const getEmployeeByCode = async (req, res) => {
 
     const employee = await db.Employee.findOne({
       where: { code },
-
       include: [
-        {
-          model: db.Department,
-          attributes: ["name"],
-        },
-        {
-          model: db.Position,
-          attributes: ["name"],
-        },
+        { model: db.Department, attributes: ["id", "name"] },
+        { model: db.Position, attributes: ["id", "name"] },
       ],
     });
 
     if (!employee) {
-      return res.status(404).json({
-        message: "Không tìm thấy nhân viên",
-      });
+      return res.status(404).json({ message: "Không tìm thấy nhân viên" });
     }
 
     return res.json({
       name: employee.name,
       code: employee.code,
-
       dob: employee.dob
         ? new Date(employee.dob).toISOString().split("T")[0]
         : "",
-
       gender: employee.gender,
-
       birthPlace: employee.birthPlace,
       ethnicity: employee.ethnicity,
       nationality: employee.nationality,
-
       idCard: employee.idCard,
       phone: employee.phone,
       email: employee.email,
 
-      department: employee.Department?.name || "",
-      position: employee.Position?.name || "",
+      // 🔥 QUAN TRỌNG: trả luôn ID
+      department_id: employee.Department?.id || "",
+      position_id: employee.Position?.id || "",
     });
   } catch (error) {
     console.log(error);
-
-    return res.status(500).json({
-      message: "Lỗi server",
-    });
+    return res.status(500).json({ message: "Lỗi server" });
   }
 };
 
@@ -66,32 +51,24 @@ const getEmployeeByCode = async (req, res) => {
 const updateEmployee = async (req, res) => {
   try {
     const { code } = req.params;
-    const data = req.body;
+    const { department_id, position_id } = req.body;
 
-    console.log("INPUT:", data);
+    console.log("UPDATE INPUT:", { code, department_id, position_id });
 
-    const deptName = (data.department || "").trim();
-    const posName = (data.position || "").trim();
-
-    const [deptRows] = await connection
-      .promise()
-      .query("SELECT id FROM departments WHERE TRIM(name)=?", [deptName]);
-
-    const [posRows] = await connection
-      .promise()
-      .query("SELECT id FROM positions WHERE TRIM(name)=?", [posName]);
-
-    console.log("DEPT:", deptRows);
-    console.log("POS:", posRows);
-
-    if (!deptRows.length || !posRows.length) {
+    if (!department_id || !position_id) {
       return res.status(400).json({
-        message: "Sai phòng ban hoặc chức vụ",
+        message: "Thiếu department_id hoặc position_id",
       });
     }
 
-    const department_id = deptRows[0].id;
-    const position_id = posRows[0].id;
+    const deptId = Number(department_id);
+    const posId = Number(position_id);
+
+    if (isNaN(deptId) || isNaN(posId)) {
+      return res.status(400).json({
+        message: "ID không hợp lệ",
+      });
+    }
 
     const [result] = await connection.promise().query(
       `
@@ -99,14 +76,12 @@ const updateEmployee = async (req, res) => {
       SET department_id=?, position_id=?
       WHERE code=?
       `,
-      [department_id, position_id, code],
+      [deptId, posId, code],
     );
-
-    console.log("AFFECTED:", result.affectedRows);
 
     if (result.affectedRows === 0) {
       return res.status(404).json({
-        message: "Không tìm thấy employee (sai code)",
+        message: "Không tìm thấy employee",
       });
     }
 
@@ -115,7 +90,7 @@ const updateEmployee = async (req, res) => {
       affectedRows: result.affectedRows,
     });
   } catch (err) {
-    console.log("ERROR:", err);
+    console.log(err);
     return res.status(500).json({ message: "Server error" });
   }
 };
@@ -127,9 +102,7 @@ const resetPassword = async (req, res) => {
   try {
     const { code } = req.params;
 
-    const employee = await db.Employee.findOne({
-      where: { code },
-    });
+    const employee = await db.Employee.findOne({ where: { code } });
 
     if (!employee) {
       return res.status(404).json({
@@ -139,19 +112,14 @@ const resetPassword = async (req, res) => {
 
     const hashPassword = await bcrypt.hash("123456", 10);
 
-    await employee.update({
-      password: hashPassword,
-    });
+    await employee.update({ password: hashPassword });
 
     return res.json({
       message: "Reset mật khẩu thành công",
     });
   } catch (error) {
     console.log(error);
-
-    return res.status(500).json({
-      message: "Lỗi reset password",
-    });
+    return res.status(500).json({ message: "Lỗi reset password" });
   }
 };
 

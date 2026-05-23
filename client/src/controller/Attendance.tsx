@@ -8,7 +8,7 @@ type User = {
 };
 
 type Attendance = {
-  id: number;
+  attendance_id: number;
   employee_id: number;
   employee_name: string;
   work_date: string;
@@ -16,7 +16,6 @@ type Attendance = {
   check_out: string;
   status: string;
   reason?: string;
-
   leave_status?: "pending" | "approved" | "rejected";
 };
 
@@ -30,8 +29,6 @@ export default function AttendancePage() {
   const [loading, setLoading] = useState(false);
 
   const [filterStatus, setFilterStatus] = useState("all");
-
-  const [leaveRequests, setLeaveRequests] = useState<Attendance[]>([]);
 
   const [showTable, setShowTable] = useState(false);
 
@@ -50,6 +47,7 @@ export default function AttendancePage() {
     present: 0,
     late: 0,
     absent: 0,
+    leave: 0,
   });
 
   // =====================================
@@ -92,8 +90,6 @@ export default function AttendancePage() {
         },
       });
 
-      console.log("API RESPONSE =", res.data);
-
       const attendanceData = Array.isArray(res.data.attendance)
         ? res.data.attendance
         : [];
@@ -104,6 +100,7 @@ export default function AttendancePage() {
         present: res.data.summary?.present || 0,
         late: res.data.summary?.late || 0,
         absent: res.data.summary?.absent || 0,
+        leave: res.data.summary?.leave || 0,
       });
     } catch (err) {
       console.log(err);
@@ -113,13 +110,42 @@ export default function AttendancePage() {
   };
 
   // =====================================
-  // FILTER
+  // APPROVE / REJECT LEAVE
   // =====================================
 
-  const filteredAttendance =
-    filterStatus === "all"
-      ? attendanceList
-      : attendanceList.filter((item) => item.status === filterStatus);
+  const approveLeave = async (id: number) => {
+    try {
+      await axios.put(`http://localhost:5000/api/attendance/approve/${id}`);
+
+      fetchAttendance();
+    } catch (err) {
+      console.log(err);
+    }
+  };
+
+  const rejectLeave = async (id: number) => {
+    try {
+      await axios.put(`http://localhost:5000/api/attendance/reject/${id}`);
+
+      fetchAttendance();
+    } catch (err) {
+      console.log(err);
+    }
+  };
+
+  // =====================================
+  // FILTER
+  const handleFilter = (status: string) => {
+    setFilterStatus(status);
+    setShowTable(true);
+  };
+  // =====================================
+
+  const filteredAttendance = attendanceList.filter((item) => {
+    if (filterStatus === "all") return true;
+
+    return item.status?.trim().toLowerCase() === filterStatus;
+  });
 
   // =====================================
   // LOGOUT
@@ -127,7 +153,6 @@ export default function AttendancePage() {
 
   const handleLogout = () => {
     localStorage.removeItem("user");
-
     localStorage.removeItem("token");
 
     navigate("/");
@@ -231,12 +256,9 @@ export default function AttendancePage() {
         </div>
 
         {/* SUMMARY */}
-        <div className="grid grid-cols-3 gap-4 mb-6">
+        <div className="grid grid-cols-4 gap-4 mb-6">
           <div
-            onClick={() => {
-              setFilterStatus("present");
-              setShowTable(true);
-            }}
+            onClick={() => handleFilter("present")}
             className="cursor-pointer"
           >
             <SummaryCard
@@ -246,13 +268,7 @@ export default function AttendancePage() {
             />
           </div>
 
-          <div
-            onClick={() => {
-              setFilterStatus("late");
-              setShowTable(true);
-            }}
-            className="cursor-pointer"
-          >
+          <div onClick={() => handleFilter("late")} className="cursor-pointer">
             <SummaryCard
               title={`Đi trễ (${summary.late}/${attendanceList.length})`}
               value={summary.late}
@@ -261,16 +277,21 @@ export default function AttendancePage() {
           </div>
 
           <div
-            onClick={() => {
-              setFilterStatus("absent");
-              setShowTable(true);
-            }}
+            onClick={() => handleFilter("absent")}
             className="cursor-pointer"
           >
             <SummaryCard
-              title={`Nghỉ (${summary.absent}/${attendanceList.length})`}
+              title={`Vắng (${summary.absent}/${attendanceList.length})`}
               value={summary.absent}
               color="bg-red-500"
+            />
+          </div>
+
+          <div onClick={() => handleFilter("leave")} className="cursor-pointer">
+            <SummaryCard
+              title={`Nghỉ phép (${summary.leave}/${attendanceList.length})`}
+              value={summary.leave}
+              color="bg-purple-500"
             />
           </div>
         </div>
@@ -309,21 +330,27 @@ export default function AttendancePage() {
                   <th className="p-4 text-center">Check Out</th>
 
                   <th className="p-4 text-center">Trạng thái</th>
+
                   <th className="p-4 text-center">Lý do</th>
+
+                  <th className="p-4 text-center">Duyệt nghỉ</th>
                 </tr>
               </thead>
 
               <tbody>
                 {filteredAttendance.length === 0 ? (
                   <tr>
-                    <td colSpan={5} className="text-center p-10 text-gray-400">
+                    <td colSpan={7} className="text-center p-10 text-gray-400">
                       Không có dữ liệu
                     </td>
                   </tr>
                 ) : (
                   filteredAttendance.map((item) => (
-                    <tr key={item.id} className="border-b hover:bg-gray-50">
-                      <td className="p-4">{item.id}</td>
+                    <tr
+                      key={item.employee_id}
+                      className="border-b hover:bg-gray-50"
+                    >
+                      <td className="p-4">{item.attendance_id}</td>
 
                       <td className="p-4">{item.employee_name || "NO NAME"}</td>
 
@@ -343,20 +370,78 @@ export default function AttendancePage() {
                               ? "bg-green-500"
                               : item.status === "late"
                                 ? "bg-yellow-500"
-                                : "bg-red-500"
+                                : item.status === "leave"
+                                  ? "bg-purple-500"
+                                  : "bg-red-500"
                           }`}
                         >
                           {item.status === "present"
                             ? "Đi làm"
                             : item.status === "late"
                               ? "Đi trễ"
-                              : "Nghỉ"}
+                              : item.status === "leave"
+                                ? "Nghỉ phép"
+                                : "Vắng"}
                         </span>
                       </td>
+
+                      <td className="p-4 text-center">{item.reason || "--"}</td>
+
                       <td className="p-4 text-center">
-                        {item.status === "absent" || item.status === "late"
-                          ? item.reason || "Không có"
-                          : "--"}
+                        {item.status === "leave" &&
+                        item.leave_status === "pending" ? (
+                          <div className="flex gap-2 justify-center">
+                            <button
+                              onClick={() => approveLeave(item.attendance_id)}
+                              className="bg-green-500 text-white px-3 py-1 rounded"
+                            >
+                              Duyệt
+                            </button>
+
+                            <button
+                              onClick={() => rejectLeave(item.attendance_id)}
+                              className="bg-red-500 text-white px-3 py-1 rounded"
+                            >
+                              Từ chối
+                            </button>
+                          </div>
+                        ) : item.status === "leave" ? (
+                          <div className="flex gap-2 justify-center">
+                            {item.leave_status === "approved" ? (
+                              <>
+                                <span className="bg-green-500 text-white px-3 py-1 rounded">
+                                  Đã duyệt
+                                </span>
+
+                                <button
+                                  onClick={() =>
+                                    rejectLeave(item.attendance_id)
+                                  }
+                                  className="bg-red-500 text-white px-3 py-1 rounded"
+                                >
+                                  Đổi sang từ chối
+                                </button>
+                              </>
+                            ) : (
+                              <>
+                                <span className="bg-red-500 text-white px-3 py-1 rounded">
+                                  Đã từ chối
+                                </span>
+
+                                <button
+                                  onClick={() =>
+                                    approveLeave(item.attendance_id)
+                                  }
+                                  className="bg-green-500 text-white px-3 py-1 rounded"
+                                >
+                                  Đổi sang duyệt
+                                </button>
+                              </>
+                            )}
+                          </div>
+                        ) : (
+                          "--"
+                        )}
                       </td>
                     </tr>
                   ))
