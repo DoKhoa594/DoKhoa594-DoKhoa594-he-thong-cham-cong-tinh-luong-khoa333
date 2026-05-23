@@ -16,6 +16,8 @@ type Attendance = {
   check_out: string;
   status: string;
   reason?: string;
+
+  leave_status?: "pending" | "approved" | "rejected";
 };
 
 export default function AttendancePage() {
@@ -28,6 +30,8 @@ export default function AttendancePage() {
   const [loading, setLoading] = useState(false);
 
   const [filterStatus, setFilterStatus] = useState("all");
+
+  const [leaveRequests, setLeaveRequests] = useState<Attendance[]>([]);
 
   const [showTable, setShowTable] = useState(false);
 

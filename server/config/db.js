@@ -5,6 +5,7 @@ const connection = mysql.createConnection({
   user: "root",
   password: "",
   database: "employee_db",
+  timezone: "+07:00",
 });
 
 connection.connect((err) => {

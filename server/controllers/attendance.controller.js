@@ -5,20 +5,16 @@ import connection from "../config/db.js";
 // =====================================
 
 const getVNDate = () => {
-  const now = new Date();
-
-  // lấy ngày VN thật
-  now.setHours(now.getHours() + 7);
-
-  return now.toISOString().split("T")[0];
+  return new Date().toLocaleDateString("en-CA", {
+    timeZone: "Asia/Ho_Chi_Minh",
+  });
 };
 
 const getVNTime = () => {
-  const now = new Date();
-
-  now.setHours(now.getHours() + 7);
-
-  return now.toTimeString().split(" ")[0];
+  return new Date().toLocaleTimeString("en-GB", {
+    timeZone: "Asia/Ho_Chi_Minh",
+    hour12: false,
+  });
 };
 
 // =====================================
@@ -104,7 +100,7 @@ END AS status
 
 export const checkIn = async (req, res) => {
   try {
-    const { employee_id } = req.body;
+    const { employee_id, status = "present", reason = null } = req.body;
 
     const today = getVNDate();
 
@@ -132,34 +128,49 @@ export const checkIn = async (req, res) => {
         });
       }
 
-      const status = time > "08:00:00" ? "late" : "present";
+      let finalStatus = status;
+
+      if (status === "present") {
+        finalStatus = time > "08:00:00" ? "late" : "present";
+      }
 
       const insertSql = `
-        INSERT INTO attendance
-        (
+  INSERT INTO attendance
+  (
+    employee_id,
+    work_date,
+    check_in,
+    status,
+    reason
+  )
+  VALUES (?, ?, ?, ?, ?)
+`;
+
+      connection.query(
+        insertSql,
+        [
           employee_id,
-          work_date,
-          check_in,
-          status
-        )
-        VALUES (?, ?, ?, ?)
-      `;
+          today,
+          finalStatus === "leave" ? null : time,
+          finalStatus,
+          reason,
+        ],
+        (err) => {
+          if (err) {
+            console.log(err);
 
-      connection.query(insertSql, [employee_id, today, time, status], (err) => {
-        if (err) {
-          console.log(err);
+            return res.status(500).json({
+              message: "Check in thất bại",
+            });
+          }
 
-          return res.status(500).json({
-            message: "Check in thất bại",
+          return res.json({
+            message: "Check in thành công",
+            time,
+            date: today,
           });
-        }
-
-        return res.json({
-          message: "Check in thành công",
-          time,
-          date: today,
-        });
-      });
+        },
+      );
     });
   } catch (err) {
     console.log(err);
